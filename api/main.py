@@ -44,10 +44,22 @@ def predict():
         result = json.loads(response['Body'].read().decode())
         
         logger.info(f"Sagemaker response: {json.dumps(result)}")
+
+        # Extract the prediction value and apply multipliers
+        prediction = result['prediction']
+        
+        if 'bad_weather' in data and data['bad_weather']:
+            prediction = prediction * 0.955
+
+        if 'transport_issues' in data and data['transport_issues']:
+            prediction = prediction * 0.85
+
+        if 'patient_engaged' in data and data['patient_engaged']:
+            prediction = prediction * 1.11
         
         return jsonify({
             "status": "success",
-            "prediction": result
+            "prediction": prediction
         }), 200
         
     except Exception as e:
