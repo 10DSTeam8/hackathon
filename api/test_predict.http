@@ -1,0 +1,36 @@
+# Test the Flask Lambda API with Sagemaker integration
+
+POST http://127.0.0.1:5000/predict
+Content-Type: application/json
+
+{
+  "features": [1.0, 2.0, 3.0, 4.0],
+  "model_version": "v1",
+  "metadata": {
+    "timestamp": "2025-09-16T13:56:00Z",
+    "user_id": "test_user"
+  }
+}
+
+###
+
+# Test with different data structure
+POST http://127.0.0.1:5000/predict
+Content-Type: application/json
+
+{
+  "input_data": {
+    "age": 30,
+    "income": 50000,
+    "credit_score": 720
+  },
+  "request_id": "test_123"
+}
+
+###
+
+# Test error handling with empty body
+POST http://127.0.0.1:5000/predict
+Content-Type: application/json
+
+###
