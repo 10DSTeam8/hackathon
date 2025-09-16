@@ -27,8 +27,8 @@ def predict():
         # Log the incoming request
         logger.info(f"Received prediction request: {json.dumps(data)}")
         
-        # TODO: Replace with your actual Sagemaker endpoint name
-        endpoint_name = "your-sagemaker-endpoint-name"
+        # TODO: Replace with actual Sagemaker endpoint name
+        endpoint_name = "sagemaker-endpoint-name"
         
         # Prepare the payload for Sagemaker
         payload = json.dumps(data)
