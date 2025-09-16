@@ -55,7 +55,7 @@ def predict():
             prediction = prediction * 0.85
 
         if 'patient_engaged' in data and data['patient_engaged']:
-            prediction = prediction * 1 # placeholder multiplier
+            prediction = prediction * 1.11
         
         return jsonify({
             "status": "success",
