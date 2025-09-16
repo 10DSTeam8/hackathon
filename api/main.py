@@ -44,6 +44,12 @@ def predict():
         result = json.loads(response['Body'].read().decode())
         
         logger.info(f"Sagemaker response: {json.dumps(result)}")
+
+        if 'bad_weather' in data and data['bad_weather']:
+            result = result['prediction'] * 0.955 #
+
+        if 'transport_issues' in data and data['transport_issues']:
+            result = result['prediction'] * 0.85 #
         
         return jsonify({
             "status": "success",
