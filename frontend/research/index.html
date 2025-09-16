@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NHS Did Not Show (DNA) Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    :root{
+      --primary:#005EB8; --bg:#f6f8fb; --card:#ffffff; --text:#0b1324; --muted:#667085;
+      --success:#10b981; --warning:#f59e0b; --danger:#ef4444; --ring:#e5e7eb;
+      --shadow:0 10px 30px rgba(2,16,63,.08), 0 2px 8px rgba(2,16,63,.05); --radius:14px;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{
+      margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+      background:radial-gradient(1200px 600px at 10% -10%, #dfeafb 0%, transparent 60%),
+        radial-gradient(1200px 600px at 110% 0%, #eaf3ff 0%, transparent 60%), var(--bg);
+    }
+    a{color:var(--primary);text-decoration:none}
+    .container{max-width:1280px;margin:0 auto;padding:24px;}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+    .title{display:flex;align-items:center;gap:14px;}
+    .logo{
+      width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#007bff);
+      box-shadow:inset 0 0 30px rgba(255,255,255,.15), var(--shadow);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;letter-spacing:.5px
+    }
+    .title h1{margin:0;font-weight:800;font-size:22px}
+    .badges{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .badge{font-size:12px;padding:6px 10px;border-radius:999px;background:#eef2ff;color:#1f3a7b;border:1px solid #d6e0ff;display:inline-flex;align-items:center;gap:8px}
+    .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .control-group{background:var(--card);border:1px solid var(--ring);border-radius:999px;padding:6px 8px;display:flex;gap:6px;box-shadow:var(--shadow)}
+    .toggle{padding:8px 12px;border-radius:999px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:600}
+    .toggle.active{background:#eef6ff;color:#07396e;border-color:#cfe3ff}
+    .btn{background:linear-gradient(135deg,var(--primary),#007bff);color:white;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700;box-shadow:var(--shadow)}
+    .btn.secondary{background:#f1f5f9;color:#0b1324;border:1px solid #dfe3ea}
+    .btn.ghost{background:#ffffff;border:1px solid #e5e7eb;color:#0b1324}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .card{background:var(--card);border:1px solid var(--ring);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:12px}
+    .kpi{padding:18px}
+    .kpi h3{margin:0 0 6px 0;font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+    .kpi .value{display:flex;align-items:center;gap:10px}
+    .big{font-size:28px;font-weight:800}
+    .mini{font-size:12px;color:var(--muted)}
+    .main{grid-column:1/-1;display:grid;grid-template-columns:4fr 4fr 4fr;gap:16px}
+    .section{padding:16px}
+    .section h2{margin:0 0 8px 0;font-size:16px}
+    .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+    .stream{max-height:70vh;overflow:auto;padding-right:6px}
+    .stream .item{border:1px solid #e8ebf2;border-radius:12px;padding:12px;display:flex;gap:12px;margin-bottom:12px;background:#fbfdff;animation:fadeInUp .3s ease}
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .risk-dot{width:12px;height:12px;border-radius:50%}
+    .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;border:1px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.05)}
+    .badge-sm{font-size:12px;background:#f2f4f7;border:1px solid #e5e7eb;padding:4px 8px;border-radius:999px;color:#111827}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{font-size:11px;background:#f8fafc;border:1px solid #e5e7eb;color:#334155;padding:4px 8px;border-radius:999px}
+    .divider{height:1px;background:#eaeef6;margin:10px 0}
+    .panel{background:#f9fbff;border:1px dashed #dbe7ff;border-radius:12px;padding:12px;margin-top:8px}
+    .footer{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
+    .sticky{position:sticky;top:12px}
+    .copy{font-size:12px;background:#eef2ff;border:1px solid #d6e0ff;color:#1f3a7b;padding:8px 10px;border-radius:10px;cursor:pointer}
+    .small{font-size:13px;color:var(--muted)} .ghost{opacity:.85}
+    /* Floating page switcher button */
+    .switcher {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 1000;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg,var(--primary),#007bff);
+      color: #fff;
+      border: 0;
+      padding: 10px 14px;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .switcher:hover { opacity: 0.95; }
+    @media (max-width: 1024px){ .kpis{ grid-template-columns: repeat(2, 1fr); } .main{ grid-template-columns: 1fr; } .sticky{ position: static; } }
+    @media (max-width: 640px){ .kpis{ grid-template-columns: 1fr; } .title h1{ font-size: 18px; } .logo{ width:36px; height:36px; } }
+  </style>
+</head>
+<script>
+  (function(){
+    try {
+      var el = document.createElement('a');
+      el.id = 'pageSwitcher';
+      el.className = 'switcher';
+      // Detect which page we’re on by an element unique to the scheduler
+      var isScheduler = !!document.getElementById('applyCampaign'); // exists only on scheduler
+      // Build robust relative URLs so it works on static hosting
+      var target = isScheduler
+        ? new URL('./', location.href).href              // dashboard (index.html)
+        : new URL('./ab-scheduler.html', location.href).href; // scheduler
+      el.href = target;
+      el.textContent = isScheduler ? '⬅️ Back to Dashboard' : '📅 Open A/B Scheduler';
+      el.setAttribute('aria-label', el.textContent);
+      document.body.appendChild(el);
+    } catch (e) { console.error('Switcher init failed', e); }
+  })();
+  </script>
+<body>
+
+<!-- Show dashboard by default so the page never looks blank -->
+<div id="dashboardView" class="container">
+  <div class="header">
+    <div class="title">
+      <div class="logo">NHS</div>
+      <div>
+        <h1>NHS Did Not Show (DNA) Dashboard</h1>
+        <div class="badges">
+          <span class="badge">Live risk scoring</span>
+          <span class="badge">Audience submissions stream in</span>
+          <a href="./ab-scheduler.html" class="badge">Open A/B Scheduler</a>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="control-group" id="weatherGroup">
+        <button class="toggle active" data-weather="sun">☀️ Sun</button>
+        <button class="toggle" data-weather="rain">🌧️ Rain</button>
+      </div>
+      <div class="control-group" id="transportGroup">
+        <button class="toggle active" data-transport="ok">🚆 Normal</button>
+        <button class="toggle" data-transport="disrupt">⚠️ Disruption</button>
+      </div>
+      <button id="simulateBtn" class="btn secondary">▶️ Simulate Participants</button>
+      <button id="resetBtn" class="btn ghost">♻️ Clear</button>
+    </div>
+  </div>
+
+  <div class="grid kpis">
+    <div class="card kpi">
+      <h3>LIVE PATIENTS</h3>
+      <div class="value"><div class="big" id="kpiPatients">0</div></div>
+      <div class="small">Patients booking live</div>
+    </div>
+    <div class="card kpi">
+      <h3>LIVE (DNA) HOSPITAL DAY RISK</h3>
+      <div class="value">
+        <canvas id="kpiRiskPie" width="54" height="54" style="margin-right:6px"></canvas>
+        <div>
+          <div class="big" id="kpiAvgRisk">0%</div>
+          <div class="mini" id="kpiRiskLabel">Medium</div>
+        </div>
+      </div>
+    </div>
+    <div class="card kpi">
+      <h3>PREDICTED NO SHOWS</h3>
+      <div class="value"><div class="big" id="kpiNoShows">0%</div></div>
+      <div class="small">Predicted % of no show across entries</div>
+    </div>
+    <div class="card kpi">
+      <h3>OVERBOOKING SUGGESTION</h3>
+      <div class="value">
+        <div class="big" id="kpiOverbook">+0</div>
+        <div class="mini" id="kpiConfidence">Confidence: —</div>
+      </div>
+      <div class="small">Adjust slots to match expected DNAs</div>
+    </div>
+  </div>
+
+  <div class="grid main">
+    <div class="card section">
+      <div class="toolbar">
+        <h2 style="margin-right:auto">Live Stream</h2>
+        <span class="pill">Filter</span>
+        <button class="toggle active" data-filter="all">All</button>
+        <button class="toggle" data-filter="low">Low</button>
+        <button class="toggle" data-filter="med">Medium</button>
+        <button class="toggle" data-filter="high">High</button>
+      </div>
+      <p class="sub">New audience entries appear here with risk and assignment.</p>
+      <div class="stream" id="stream"></div>
+    </div>
+
+    <div class="card section sticky">
+      <h2>Risk Overview</h2>
+      <p class="sub">Distribution of adjusted no‑show risk across current entries.</p>
+      <canvas id="riskChart" height="200"></canvas>
+
+      <div class="divider"></div>
+      <h2>Outcomes & Calibration</h2>
+      <p class="sub">Record arrivals/no‑shows to validate predictions and calibration.</p>
+      <div class="grid-2">
+        <div class="panel">Outcomes recorded: <span class="hl" id="outCount">0</span></div>
+        <div class="panel">Accuracy @ 50% threshold: <span class="hl" id="outAcc">—</span></div>
+      </div>
+      <div class="actions">
+        <button id="simulateOutcomes" class="btn secondary">🎲 Simulate 10 outcomes</button>
+        <button id="resetOutcomes" class="btn ghost">🧹 Clear outcomes</button>
+      </div>
+      <canvas id="calibChart" height="170" style="margin-top:8px"></canvas>
+
+      <div class="divider"></div>
+      <h2>Share Public Form</h2>
+      <div class="qr-wrap">
+        <div id="qr" style="width:110px;height:110px;border-radius:12px;border:1px solid #e5e7eb;background:white;display:grid;place-items:center"></div>
+        <div>
+          <div class="small">Audience link:</div>
+          <div id="publicLink" style="font-weight:700;word-break:break-all;margin:6px 0"></div>
+          <div class="actions">
+            <button id="copyLink" class="copy">Copy link</button>
+            <a id="openForm" class="btn" target="_blank">Open Form</a>
+            <button id="seedBtn" class="btn secondary">Seed 20 Synthetic</button>
+          </div>
+          <div class="note small">Tip: Put this QR on your slide so the audience can join.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card section">
+      <h2>Inspector</h2>
+      <p class="sub">Click a card in the stream to see the “why” and assignments.</p>
+      <div id="inspector">
+        <div class="small ghost">No selection yet. Pick a participant from the left.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">This is a live demo with synthetic/anonymised data. For pilots, integrate with booking systems and messaging APIs.</div>
+</div>
+
+<!-- Public Form View (hidden by default) -->
+<div id="publicFormView" hidden>
+  <div class="center" style="min-height:100dvh;display:grid;place-items:center;padding:24px">
+    <div class="card form-card" style="max-width:560px;width:100%;padding:18px">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+        <div class="logo" style="width:36px;height:36px">NHS</div>
+        <div>
+          <h2 style="margin:0">Appointment Reminder Study (Demo)</h2>
+          <div class="small">Help us test smarter reminders to reduce missed appointments.</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <form id="publicForm">
+        <div class="grid" style="grid-template-columns:1fr 1fr; gap:10px">
+          <div><label>Age band</label>
+            <select class="input" name="age">
+              <option>18-24</option><option>25-44</option><option>45-64</option><option>65+</option>
+            </select>
+          </div>
+          <div><label>Appointment type</label>
+            <select class="input" name="type">
+              <option>General</option><option>Physiotherapy</option><option>Cardiology</option><option>Mental Health</option>
+            </select>
+          </div>
+          <div><label>Time of day</label>
+            <select class="input" name="daypart">
+              <option>Morning</option><option>Afternoon</option><option>Evening</option>
+            </select>
+          </div>
+          <div><label>Prior missed appointments</label>
+            <select class="input" name="dnas">
+              <option>0</option><option>1</option><option>2</option><option>3+</option>
+            </select>
+          </div>
+          <div><label>Transport mode</label>
+            <select class="input" name="transport">
+              <option>Public</option><option>Car</option><option>Walk</option>
+            </select>
+          </div>
+          <div><label>Work/childcare conflict likely?</label>
+            <select class="input" name="conflict">
+              <option>No</option><option>Yes</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin:10px 0">
+          <label class="small"><input type="checkbox" name="consent" required /> I understand this is a demo and no real messages will be sent.</label>
+        </div>
+        <div class="actions">
+          <button class="btn" type="submit">Submit</button>
+          <a class="btn secondary" href="./">View Dashboard</a>
+        </div>
+      </form>
+      <div id="thanks" class="panel" style="display:none">
+        <div style="font-weight:700;margin-bottom:4px">Thanks! Your anonymous entry was received.</div>
+        <div class="small">You can close this tab now.</div>
+      </div>
+      <div class="divider"></div>
+      <div class="small">We only ask for general info (no personal identifiers). Your response appears instantly on the live dashboard.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var CAMPAIGN_LS_KEY = 'abCampaignsV2';
+  var CHANNEL_EFFECTS = {
+    'Voice Manual': 0.12, 'Voice IVR': 0.08, 'SMS': 0.02,
+    'SMS (Evening)': 0.03, 'App Push': 0.03, 'Email': 0.01,
+    'Voice Call': 0.10
+  };
+
+  var urlParams = new URLSearchParams(location.search);
+  var isPublicForm = urlParams.get('public') === '1';
+  var dashboardView = document.getElementById('dashboardView');
+  var publicFormView = document.getElementById('publicFormView');
+
+  if(isPublicForm){
+    dashboardView.hidden = true;
+    publicFormView.hidden = false;
+    setupPublicForm();
+  } else {
+    dashboardView.hidden = false;
+    if(publicFormView) publicFormView.hidden = true;
+    setupDashboard();
+  }
+
+  function setupPublicForm(){
+    var form = document.getElementById('publicForm');
+    var thanks = document.getElementById('thanks');
+    var channel = ('BroadcastChannel' in window) ? new BroadcastChannel('dna-demo') : null;
+
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var data = Object.fromEntries(new FormData(form));
+      if(!data.consent) return;
+      var payload = {
+        age_band: data.age,
+        appointment_type: data.type,
+        day_part: data.daypart,
+        prior_dnas: normalizeDNAs(data.dnas),
+        transport_mode: data.transport,
+        conflict: data.conflict === 'Yes'
+      };
+      if(channel){ channel.postMessage({type:'submission', payload: payload}); }
+      form.style.display = 'none';
+      thanks.style.display = 'block';
+    });
+    function normalizeDNAs(v){ if(v === '3+') return 3; return parseInt(v||'0',10); }
+  }
+
+  function setupDashboard(){
+    // State
+    var state = {
+      items: [],
+      ctx: { weather: 'sun', transport: 'ok' },
+      campaigns: [],
+      simTimer: null
+    };
+
+    var predictionLog = new Map();
+    var outcomes = [];
+
+    // Elements
+    var weatherGroup = document.getElementById('weatherGroup');
+    var transportGroup = document.getElementById('transportGroup');
+    var streamEl = document.getElementById('stream');
+
+    var kpiPatients = document.getElementById('kpiPatients');
+    var kpiAvgRisk = document.getElementById('kpiAvgRisk');
+    var kpiRiskLabel = document.getElementById('kpiRiskLabel');
+    var kpiNoShows = document.getElementById('kpiNoShows');
+    var kpiOverbook = document.getElementById('kpiOverbook');
+    var kpiConfidence = document.getElementById('kpiConfidence');
+
+    var simulateBtn = document.getElementById('simulateBtn');
+    var resetBtn = document.getElementById('resetBtn');
+
+    var publicLink = document.getElementById('publicLink');
+    var copyLink = document.getElementById('copyLink');
+    var openForm = document.getElementById('openForm');
+    var seedBtn = document.getElementById('seedBtn');
+
+    var outCountEl = document.getElementById('outCount');
+    var outAccEl = document.getElementById('outAcc');
+    var simulateOutcomesBtn = document.getElementById('simulateOutcomes');
+    var resetOutcomesBtn = document.getElementById('resetOutcomes');
+
+    // Charts (safe)
+    function safeChart(ctx, cfg){ try{ if(window.Chart && ctx) return new Chart(ctx, cfg); }catch(e){ console.error(e); } return null; }
+
+    var riskCtx = document.getElementById('riskChart') ? document.getElementById('riskChart').getContext('2d') : null;
+    var calibCtx = document.getElementById('calibChart') ? document.getElementById('calibChart').getContext('2d') : null;
+    var kpiRiskPieCanvas = document.getElementById('kpiRiskPie');
+    var kpiRiskPieCtx = kpiRiskPieCanvas ? kpiRiskPieCanvas.getContext('2d') : null;
+
+    var riskChart = safeChart(riskCtx, {
+      type: 'bar',
+      data: {
+        labels: ['0–19%', '20–39%', '40–59%', '60–79%', '80–100%'],
+        datasets: [{
+          label:'Count',
+          data:[0,0,0,0,0],
+          backgroundColor: ['#10b981','#84cc16','#f59e0b','#f97316','#ef4444'],
+          borderRadius: 8
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{ legend:{display:false} },
+        scales:{ x:{ grid:{ display:false } }, y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#eef2f7' } } }
+      }
+    });
+
+    var kpiRiskPieChart = safeChart(kpiRiskPieCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Predicted DNA','Predicted Attend'],
+        datasets: [{ data: [0, 1], backgroundColor: ['#ef4444','#e5e7eb'], borderWidth: 0 }]
+      },
+      options: { responsive: false, plugins: { legend: { display: false } }, cutout: '70%', rotation: -90, circumference: 360 }
+    });
+
+    var calibChart = safeChart(calibCtx, {
+      type:'scatter',
+      data:{ datasets:[
+        { label:'Observed vs Predicted', data: [], backgroundColor: '#2563eb' },
+        { type:'line', label:'Ideal', data: [{x:0,y:0},{x:1,y:1}], borderColor:'#94a3b8', borderDash: [4,4], fill:false, pointRadius:0 }
+      ]},
+      options:{
+        plugins:{ legend:{ display:false } },
+        scales:{
+          x:{ min:0, max:1, grid:{ color:'#eef2f7' }, ticks:{ callback: function(v){ return (v*100)+'%'; } }, title:{ display:true, text:'Predicted no‑show prob.' } },
+          y:{ min:0, max:1, grid:{ color:'#eef2f7' }, ticks:{ callback: function(v){ return (v*100)+'%'; } }, title:{ display:true, text:'Observed no‑show rate' } }
+        }
+      }
+    });
+
+    // Public form link + QR (safe)
+    var formUrl = location.origin + location.pathname + '?public=1';
+    if(publicLink) publicLink.textContent = formUrl;
+    if(openForm) openForm.href = formUrl;
+    try{
+      if(window.QRCode){ new QRCode(document.getElementById("qr"), { text: formUrl, width: 100, height: 100 }); }
+      else { var qrBox = document.getElementById('qr'); if(qrBox) qrBox.textContent = 'QR unavailable'; }
+    }catch(e){ console.error(e); }
+    if(copyLink){
+      copyLink.addEventListener('click', function(){
+        try{
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(formUrl).then(function(){
+              copyLink.textContent='Copied!'; setTimeout(function(){ copyLink.textContent='Copy link'; },1200);
+            });
+          } else {
+            var ta=document.createElement('textarea'); ta.value=formUrl; document.body.appendChild(ta);
+            ta.select(); document.execCommand('copy'); ta.remove();
+            copyLink.textContent='Copied!'; setTimeout(function(){ copyLink.textContent='Copy link'; },1200);
+          }
+        }catch(e){ console.error(e); }
+      });
+    }
+
+    // Listen for public submissions
+    var channel = ('BroadcastChannel' in window) ? new BroadcastChannel('dna-demo') : null;
+    if(channel){
+      channel.onmessage = function(ev){
+        if(ev && ev.data && ev.data.type === 'submission' && ev.data.payload){
+          addItem(ev.data.payload);
+        }
+      };
+    }
+
+    // Listen for campaign sync
+    var campBus = ('BroadcastChannel' in window) ? new BroadcastChannel('dna-campaigns') : null;
+    if(campBus){
+      campBus.onmessage = function(ev){
+        if(ev && ev.data){
+          if(ev.data.type === 'campaigns_sync'){ onCampaignsUpdated(ev.data.campaigns || []); }
+          if(ev.data.type === 'reassign_now'){ reassignAllItems(); rerenderAll(); }
+        }
+      };
+    }
+    window.addEventListener('storage', function(e){
+      if(e.key === CAMPAIGN_LS_KEY){
+        try{ onCampaignsUpdated(JSON.parse(e.newValue || '[]')); }catch(err){ console.error(err); }
+      }
+    });
+    // Initial campaigns load
+    try{ onCampaignsUpdated(JSON.parse(localStorage.getItem(CAMPAIGN_LS_KEY) || '[]')); }catch(err){ onCampaignsUpdated([]); }
+
+    // Toggles
+    if(weatherGroup){
+      weatherGroup.addEventListener('click', function(e){
+        var btn = e.target.closest('.toggle'); if(!btn) return;
+        var all = weatherGroup.querySelectorAll('.toggle'); for(var i=0;i<all.length;i++){ all[i].classList.remove('active'); }
+        btn.classList.add('active'); state.ctx.weather = btn.getAttribute('data-weather') || 'sun'; recomputeAll();
+      });
+    }
+    if(transportGroup){
+      transportGroup.addEventListener('click', function(e){
+        var btn = e.target.closest('.toggle'); if(!btn) return;
+        var all = transportGroup.querySelectorAll('.toggle'); for(var i=0;i<all.length;i++){ all[i].classList.remove('active'); }
+        btn.classList.add('active'); state.ctx.transport = btn.getAttribute('data-transport') || 'ok'; recomputeAll();
+      });
+    }
+
+    // Filter buttons
+    var filterBtns = document.querySelectorAll('[data-filter]');
+    for(var fb=0; fb<filterBtns.length; fb++){
+      filterBtns[fb].addEventListener('click', function(){
+        for(var i=0;i<filterBtns.length;i++){ filterBtns[i].classList.remove('active'); }
+        this.classList.add('active'); renderStream(this.getAttribute('data-filter'));
+      });
+    }
+
+    // Simulate and reset
+    if(simulateBtn){
+      simulateBtn.addEventListener('click', function(){
+        if(state.simTimer){
+          clearInterval(state.simTimer); state.simTimer = null;
+          simulateBtn.textContent = '▶️ Simulate Participants'; simulateBtn.classList.add('secondary');
+        } else {
+          state.simTimer = setInterval(function(){
+            var item = addItem(randomPayload());
+            var p = item.risk/100; var isDNA = Math.random() < p; markOutcome(item.id, !isDNA);
+          }, 1400);
+          simulateBtn.textContent = '⏸️ Pause Simulation'; simulateBtn.classList.remove('secondary');
+        }
+      });
+    }
+
+    if(resetBtn){
+      resetBtn.addEventListener('click', function(){
+        state.items = [];
+        if(state.simTimer){ clearInterval(state.simTimer); state.simTimer = null; }
+        simulateBtn.textContent = '▶️ Simulate Participants'; simulateBtn.classList.add('secondary');
+        predictionLog.clear(); outcomes.length = 0; updateOutcomeStats(); updateCalibration(); rerenderAll();
+      });
+    }
+
+    if(seedBtn){
+      seedBtn.addEventListener('click', function(){ for(var i=0;i<20;i++) addItem(randomPayload()); });
+    }
+
+    // Outcomes controls
+    if(simulateOutcomesBtn){
+      simulateOutcomesBtn.addEventListener('click', function(){
+        var pending = state.items.filter(function(it){ return !it.outcome; }).slice(0,10);
+        for(var i=0;i<pending.length;i++){
+          var it = pending[i];
+          var pEff = it.risk/100;
+          var y = Math.random() < pEff ? 1 : 0;
+          markOutcome(it.id, y === 0);
+        }
+      });
+    }
+    if(resetOutcomesBtn){
+      resetOutcomesBtn.addEventListener('click', function(){
+        outcomes.length = 0; for(var i=0;i<state.items.length;i++){ delete state.items[i].outcome; }
+        updateOutcomeStats(); updateCalibration();
+        var activeFilterBtn = document.querySelector('.toggle.active[data-filter]');
+        var filter = activeFilterBtn ? activeFilterBtn.getAttribute('data-filter') : 'all';
+        renderStream(filter);
+      });
+    }
+
+    // Seed some
+    for(var i=0;i<8;i++) addItem(randomPayload());
+
+    // Helpers
+    function addItem(payload){
+      var item = scoreItem(payload, state.ctx);
+      predictionLog.set(item.id, item.baseRisk / 100);
+      assignCampaignToItem(item);
+      state.items.unshift(item);
+      renderItemCard(item);
+      updateKPIs(); updateRiskChart();
+      return item;
+    }
+
+    function scoreItem(input, ctx){
+      var risk = 0.18; var reasons = [];
+      if(input.prior_dnas === 1){ risk += 0.22; reasons.push('Prior DNA'); }
+      if(input.prior_dnas >= 2){ risk += 0.35; reasons.push('Multiple DNAs'); }
+      if(input.age_band === '18-24'){ risk += 0.06; reasons.push('Younger age'); }
+      if(input.age_band === '65+'){ risk += 0.03; reasons.push('Older age'); }
+      var dp = (input.day_part||'').toLowerCase();
+      if(dp === 'morning'){ risk += 0.04; reasons.push('Morning slot'); }
+      if(dp === 'evening'){ risk += 0.02; reasons.push('Evening slot'); }
+      if(input.conflict){ risk += 0.08; reasons.push('Work/childcare conflict'); }
+      if((input.transport_mode||'').toLowerCase() === 'public'){ risk += 0.04; reasons.push('Public transport'); }
+      if(ctx.weather === 'rain'){ risk += 0.05; reasons.push('Rain forecast'); }
+      if(ctx.transport === 'disrupt'){ risk += 0.08; reasons.push('Transport disruption'); }
+      if(input.appointment_type === 'Mental Health'){ risk += 0.03; reasons.push('MH appointment'); }
+      risk = Math.max(0, Math.min(risk, 0.95));
+      var recChannel = 'SMS';
+      if(risk >= 0.5) recChannel = 'Voice Call';
+      else if(risk >= 0.3) recChannel = 'SMS (Evening)';
+      else recChannel = (input.age_band === '18-24') ? 'App Push' : 'SMS';
+
+      var id = 'P-' + (self.crypto && self.crypto.randomUUID ? self.crypto.randomUUID() : (Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8)));
+      var riskPct = Math.round(risk*100);
+      return {
+        id: id, createdAt: new Date(), input: input,
+        baseRisk: riskPct, risk: riskPct,
+        channel: recChannel,
+        rationale: reasons.slice(0,3).join(', '),
+        assignment: null,
+        outcome: null
+      };
+    }
+
+    function recomputeAll(){
+      state.items = state.items.map(function(it){
+        var re = scoreItem(it.input, state.ctx);
+        var updated = { ...it, baseRisk: re.baseRisk, channel: re.channel, rationale: re.rationale };
+        if(updated.assignment){ applyAdjustment(updated); }
+        else { updated.risk = updated.baseRisk; }
+        return updated;
+      });
+      rerenderAll();
+    }
+
+    function rerenderAll(){
+      streamEl.innerHTML = '';
+      var activeFilterBtn = document.querySelector('.toggle.active[data-filter]');
+      var filter = activeFilterBtn ? activeFilterBtn.getAttribute('data-filter') : 'all';
+      renderStream(filter);
+      updateKPIs(); updateRiskChart();
+    }
+
+    function buildItemCard(item){
+      var row = document.createElement('div'); row.className = 'item'; row.dataset.id = item.id;
+      var sev = severity(item.risk);
+      var color = sev === 'low' ? '#10b981' : (sev==='med' ? '#f59e0b' : '#ef4444');
+
+      var assignmentBadges = item.assignment
+        ? '<div class="badge-sm" style="background:#ecfeff;border-color:#c7f9ff;color:#036c7e">Variant: '+escapeHtml(item.assignment.variantName)+'</div>' +
+          '<div class="badge-sm" style="background:#eef6ff;border-color:#d4e4ff;color:#07396e">Assigned: '+escapeHtml(item.assignment.channel)+'</div>'
+        : '<div class="badge-sm" style="background:#eef6ff;border-color:#d4e4ff;color:#07396e">Recommended: '+escapeHtml(item.channel)+'</div>';
+
+      var outcomeBadge = item.outcome
+        ? '<div class="badge-sm" style="background:#ecfeff;border-color:#c7f9ff;color:'+(item.outcome==='DNA'?'#b91c1c':'#065f46')+'">'+
+            '<span class="status-dot" style="background:'+(item.outcome==='DNA'?'#ef4444':'#10b981')+'"></span>Outcome: '+item.outcome+
+          '</div>' : '';
+
+      row.innerHTML = ''+
+        '<div><div class="risk-dot" style="background:'+color+';margin-top:6px"></div></div>'+
+        '<div style="flex:1">'+
+          '<div class="row" style="justify-content:space-between">'+
+            '<div class="row" style="gap:10px">'+
+              '<div class="badge-sm">ID '+item.id+'</div>'+
+              '<div class="badge-sm" style="background:#f1f5f9;border-color:#e5e7eb">'+item.risk+'% risk</div>'+
+              assignmentBadges+
+              outcomeBadge+
+            '</div>'+
+            '<div class="mini muted">'+timeAgo(item.createdAt)+'</div>'+
+          '</div>'+
+          '<div style="margin:6px 0 8px" class="muted">Why: '+(item.rationale || '—')+'</div>'+
+          '<div class="chips">'+
+            '<span class="chip">Age: '+item.input.age_band+'</span>'+
+            '<span class="chip">Time: '+item.input.day_part+'</span>'+
+            '<span class="chip">DNAs: '+item.input.prior_dnas+'</span>'+
+            '<span class="chip">Transport: '+item.input.transport_mode+'</span>'+
+            '<span class="chip">Type: '+item.input.appointment_type+'</span>'+
+          '</div>'+
+          '<div class="actions" style="margin-top:8px">'+
+            '<button class="btn ghost btn-arrived"'+(item.outcome?' disabled':'')+'>Mark Arrived</button>'+
+            '<button class="btn ghost btn-dna"'+(item.outcome?' disabled':'')+'>Mark DNA</button>'+
+          '</div>'+
+        '</div>';
+
+      row.addEventListener('click', function(){ selectItem(item); });
+      var btnArr = row.querySelector('.btn-arrived');
+      var btnDNA = row.querySelector('.btn-dna');
+      btnArr.addEventListener('click', function(e){ e.stopPropagation(); markOutcome(item.id, true); });
+      btnDNA.addEventListener('click', function(e){ e.stopPropagation(); markOutcome(item.id, false); });
+      return row;
+    }
+
+    function renderItemCard(item){ streamEl.prepend(buildItemCard(item)); }
+
+    function renderStream(filter){
+      streamEl.innerHTML = '';
+      var list = state.items.slice().reverse();
+      for(var i=0;i<list.length;i++){
+        var it = list[i];
+        if(filter !== 'all' && severity(it.risk) !== filter) continue;
+        renderItemCard(it);
+      }
+    }
+
+    function selectItem(item){
+      var inspector = document.getElementById('inspector');
+      var sev = severity(item.risk);
+      var color = sev === 'low' ? '#10b981' : (sev==='med' ? '#f59e0b' : '#ef4444');
+      var assignmentBadges = item.assignment
+        ? '<div class="badge-sm" style="background:#ecfeff;border-color:#c7f9ff;color:#036c7e">Variant: '+escapeHtml(item.assignment.variantName)+'</div>'+
+          '<div class="badge-sm" style="background:#eef6ff;border-color:#d4e4ff;color:#07396e">Assigned: '+escapeHtml(item.assignment.channel)+'</div>'
+        : '<div class="badge-sm" style="background:#eef6ff;border-color:#d4e4ff;color:#07396e">Recommended: '+escapeHtml(item.channel)+'</div>';
+      var outcomeBadge = item.outcome
+        ? '<div class="badge-sm" style="background:#ecfeff;border-color:#c7f9ff;color:'+(item.outcome==='DNA'?'#b91c1c':'#065f46')+'">'+
+            '<span class="status-dot" style="background:'+(item.outcome==='DNA'?'#ef4444':'#10b981')+'"></span>Outcome: '+item.outcome+
+          '</div>' : '';
+      inspector.innerHTML = ''+
+        '<div class="panel">'+
+          '<div class="row" style="align-items:center;justify-content:space-between">'+
+            '<div class="row" style="gap:8px;align-items:center">'+
+              '<div class="risk-dot" style="background:'+color+'"></div>'+
+              '<div><span class="hl">ID '+item.id+'</span></div>'+
+            '</div>'+
+            '<div class="mini">Submitted '+timeAgo(item.createdAt)+'</div>'+
+          '</div>'+
+          '<div class="row" style="margin-top:8px;gap:12px">'+
+            '<div class="badge-sm" style="background:#fbfefd;border-color:#e5f7ee;color:#03543f">'+item.risk+'% risk (adjusted)</div>'+
+            assignmentBadges+
+            outcomeBadge+
+          '</div>'+
+          '<div class="divider"></div>'+
+          '<div><span class="hl">Why</span>: '+(item.rationale || '—')+'</div>'+
+          '<div class="small" style="margin-top:8px">Features: Age='+item.input.age_band+', Time='+item.input.day_part+', DNAs='+item.input.prior_dnas+', Transport='+item.input.transport_mode+', Type='+item.input.appointment_type+', Conflict='+(item.input.conflict?'Yes':'No')+'</div>'+
+        '</div>';
+    }
+
+    function updateKPIs(){
+      var n = state.items.length;
+      kpiPatients.textContent = n;
+
+      var avgRisk = 0, expectedNoShows = 0, variance = 0;
+      for(var i=0;i<state.items.length;i++){
+        var it = state.items[i];
+        avgRisk += it.risk;
+        var p = it.risk/100;
+        expectedNoShows += p;
+        variance += p*(1-p);
+      }
+      avgRisk = n ? (avgRisk/n) : 0;
+
+      var dnaCount = expectedNoShows;
+      var attendCount = Math.max(0, n - expectedNoShows);
+      if(kpiRiskPieChart){
+        kpiRiskPieChart.data.datasets[0].data = n ? [dnaCount, attendCount] : [0, 1];
+        kpiRiskPieChart.update();
+      }
+
+      var avgRiskRounded = Math.round(avgRisk);
+      kpiAvgRisk.textContent = avgRiskRounded + '%';
+      kpiRiskLabel.textContent = avgRisk>=50 ? 'High' : avgRisk>=30 ? 'Medium' : 'Low';
+
+      var predictedPct = n ? Math.round((expectedNoShows / n) * 100) : 0;
+      kpiNoShows.textContent = predictedPct + '%';
+
+      var overbook = Math.min(3, Math.max(0, Math.round(expectedNoShows - 0.2)));
+      kpiOverbook.textContent = '+'+overbook;
+      var std = Math.sqrt(variance);
+      var cv = expectedNoShows ? (std/expectedNoShows) : 0;
+      var conf = expectedNoShows<0.5 ? '—' : (cv<0.5 ? 'High' : cv<0.9 ? 'Medium' : 'Low');
+      kpiConfidence.textContent = 'Confidence: '+conf;
+    }
+
+    function updateRiskChart(){
+      var bins = [0,0,0,0,0];
+      for(var i=0;i<state.items.length;i++){
+        var r = state.items[i].risk;
+        var idx = r<20 ? 0 : r<40 ? 1 : r<60 ? 2 : r<80 ? 3 : 4;
+        bins[idx]++;
+      }
+      if(riskChart){
+        riskChart.data.datasets[0].data = bins;
+        riskChart.update();
+      }
+    }
+
+    function markOutcome(id, arrived){
+      var pBase = predictionLog.get(id) || 0.3;
+      var actualDNA = arrived ? 0 : 1;
+      var predictedDNA = pBase >= 0.5 ? 1 : 0;
+      outcomes.push({ id: id, p: pBase, y: actualDNA, yhat: predictedDNA });
+
+      var it = state.items.find(function(t){ return t.id === id; });
+      if(it) it.outcome = arrived ? 'Arrived' : 'DNA';
+
+      var activeFilterBtn = document.querySelector('.toggle.active[data-filter]');
+      var filter = activeFilterBtn ? activeFilterBtn.getAttribute('data-filter') : 'all';
+      renderStream(filter);
+
+      var badgeIdEl = document.querySelector('#inspector .hl');
+      if(badgeIdEl){
+        var selId = badgeIdEl.textContent.replace('ID ','');
+        if(selId === id) selectItem(it);
+      }
+
+      updateOutcomeStats(); updateCalibration();
+    }
+
+    function updateOutcomeStats(){
+      outCountEl.textContent = outcomes.length;
+      if(outcomes.length === 0){ outAccEl.textContent = '—'; return; }
+      var correct = 0; for(var i=0;i<outcomes.length;i++){ if(outcomes[i].y === outcomes[i].yhat) correct++; }
+      outAccEl.textContent = Math.round((correct / outcomes.length) * 100) + '%';
+    }
+
+    function updateCalibration(){
+      if(!calibChart) return;
+      var bins = Array(10).fill(null).map(function(){ return {n:0,sumP:0,sumY:0}; });
+      for(var i=0;i<outcomes.length;i++){
+        var o = outcomes[i];
+        var idx = Math.min(9, Math.floor(o.p * 10));
+        bins[idx].n++; bins[idx].sumP += o.p; bins[idx].sumY += o.y;
+      }
+      var points = [];
+      for(var b=0;b<bins.length;b++){
+        var bb = bins[b]; if(bb.n>0){ points.push({ x: bb.sumP/bb.n, y: bb.sumY/bb.n }); }
+      }
+      calibChart.data.datasets[0].data = points; calibChart.update();
+    }
+
+    // Campaign integration
+    function onCampaignsUpdated(camps){
+      state.campaigns = Array.isArray(camps) ? camps : [];
+      reassignAllItems(); rerenderAll();
+    }
+    function reassignAllItems(){
+      for(var i=0;i<state.items.length;i++){ assignCampaignToItem(state.items[i], {forceReplace:true}); }
+    }
+    function assignCampaignToItem(it, opts){
+      opts = opts || {};
+      if(it.assignment && !opts.forceReplace){ applyAdjustment(it); return; }
+      var active = activeCampaignsOn(new Date(), state.campaigns);
+      var camp = null;
+      for(var i=0;i<active.length;i++){ if(matchesSegment(it, active[i])){ camp = active[i]; break; } }
+      if(!camp){ it.assignment = null; it.risk = it.baseRisk; return; }
+      var chooseA = (stableRand(it.id + '|' + camp.id) * 100) < (camp.split || 50);
+      var variant = chooseA ? camp.varA : camp.varB;
+      it.assignment = {
+        campaignId: camp.id, campaignName: camp.name,
+        variantName: variant.name, channel: variant.channel, split: camp.split || 50
+      };
+      applyAdjustment(it);
+    }
+    function applyAdjustment(it){
+      var pBase = it.baseRisk / 100;
+      var eff = CHANNEL_EFFECTS[it.assignment && it.assignment.channel] || 0;
+      var pEff = Math.max(0, pBase - eff);
+      it.risk = Math.round(pEff * 100);
+    }
+    function activeCampaignsOn(date, campaigns){
+      var d = startOfDay(date); var dow = d.getDay();
+      return (campaigns||[]).filter(function(c){
+        var start = new Date(c.start), end = new Date(c.end);
+        return (start <= d && d <= end && Array.isArray(c.dow) && c.dow.indexOf(dow) !== -1);
+      }).sort(function(a,b){ return new Date(a.start) - new Date(b.start); });
+    }
+    function matchesSegment(it, camp){
+      if(!camp || !camp.segment) return false;
+      if(camp.segment.type === 'risk'){
+        var band = riskBand(it.baseRisk);
+        return camp.segment.risks && camp.segment.risks.indexOf(band) !== -1;
+      } else {
+        return camp.segment.ages && camp.segment.ages.indexOf(it.input.age_band) !== -1;
+      }
+    }
+
+    // Utils
+    function severity(r){ if(r<20) return 'low'; if(r<50) return 'med'; return 'high'; }
+    function riskBand(r){ if(r<20) return 'low'; if(r<50) return 'med'; return 'high'; }
+    function timeAgo(date){ var s = Math.floor((Date.now()-new Date(date).getTime())/1000); if(s<60) return s+'s ago'; var m=Math.floor(s/60); if(m<60) return m+'m ago'; var h=Math.floor(m/60); return h+'h ago'; }
+    function randomPayload(){
+      var ageBands=['18-24','25-44','45-64','65+'];
+      var types=['General','Physiotherapy','Cardiology','Mental Health'];
+      var dps=['Morning','Afternoon','Evening'];
+      var transports=['Public','Car','Walk'];
+      function pick(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+      return { age_band: pick(ageBands), appointment_type: pick(types), day_part: pick(dps),
+        prior_dnas: pick([0,0,0,1,1,2,3]), transport_mode: pick(transports), conflict: Math.random()<0.35 };
+    }
+    function startOfDay(d){ var x=new Date(d); x.setHours(0,0,0,0); return x; }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]); }); }
+    function stableRand(str){ var h=5381; for(var i=0;i<str.length;i++){ h=((h<<5)+h)+str.charCodeAt(i); h|=0; } var u = (h>>>0) / 4294967295; return u; }
+  }
+})();
+</script>
+</body>
+</html>

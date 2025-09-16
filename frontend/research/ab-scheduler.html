@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NHS A/B Campaign Scheduler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --primary:#005EB8;
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --text:#0b1324;
+      --muted:#667085;
+      --success:#10b981;
+      --warning:#f59e0b;
+      --danger:#ef4444;
+      --ring:#e5e7eb;
+      --shadow:0 10px 30px rgba(2,16,63,.08), 0 2px 8px rgba(2,16,63,.05);
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #dfeafb 0%, transparent 60%),
+        radial-gradient(1200px 600px at 110% 0%, #eaf3ff 0%, transparent 60%),
+        var(--bg);
+    }
+    .container{max-width:1280px;margin:0 auto;padding:24px;}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .title{display:flex;align-items:center;gap:14px}
+    .logo{
+      width:42px;height:42px;border-radius:10px;
+      background:linear-gradient(135deg,var(--primary),#007bff);
+      box-shadow:inset 0 0 30px rgba(255,255,255,.15), var(--shadow);
+      display:flex;align-items:center;justify-content:center;color:white;font-weight:800;letter-spacing:.5px
+    }
+    .title h1{margin:0;font-weight:800;font-size:22px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .btn{background:linear-gradient(135deg,var(--primary),#007bff);color:white;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700;box-shadow:var(--shadow)}
+    .btn.secondary{background:#f1f5f9;color:#0b1324;border:1px solid #dfe3ea}
+    .btn.ghost{background:#ffffff;border:1px solid #e5e7eb;color:#0b1324}
+
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .card{background:var(--card);border:1px solid var(--ring);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .section{padding:16px}
+    .section h2{margin:0 0 8px 0;font-size:16px}
+    .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+    .divider{height:1px;background:#eaeef6;margin:10px 0}
+    .panel{background:#f9fbff;border:1px dashed #dbe7ff;border-radius:12px;padding:12px;margin-top:8px}
+
+    .kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:12px}
+    .kpi{padding:16px}
+    .kpi h3{margin:0 0 6px 0;font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+    .kpi .value{display:flex;align-items:center;gap:10px}
+    .big{font-size:28px;font-weight:800}
+    .mini{font-size:12px;color:var(--muted)}
+    label{font-size:12px;color:#475569;font-weight:600}
+    .input, select, input[type="date"], input[type="text"], input[type="range"]{
+      padding:10px 12px;border-radius:10px;border:1px solid #d9dfeb;background:white;font-size:14px;width:100%
+    }
+    .chip{font-size:11px;background:#f8fafc;border:1px solid #e5e7eb;color:#334155;padding:4px 8px;border-radius:999px}
+    .pill{border-radius:999px;padding:6px 10px;background:#eef6ff;border:1px solid #d4e4ff;color:#07396e;font-size:12px}
+
+    .calendar{user-select:none}
+    .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .cal-header h3{margin:0;font-size:16px}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .dow{font-size:12px;color:#55627a;text-align:center;margin-bottom:4px}
+    .day{border:1px solid #e6ebf5;background:white;border-radius:10px;padding:10px;min-height:74px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+    .day.other{opacity:.45}
+    .day .num{font-weight:700;font-size:13px;color:#111827}
+    .dotrow{display:flex;gap:4px;flex-wrap:wrap}
+    .dot{width:8px;height:8px;border-radius:50%}
+    .day.selected{outline:2px solid #bfd7ff}
+    .day.today{box-shadow:inset 0 0 0 2px #e5f0ff}
+
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+    /* Floating page switcher */
+    .switcher {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 1000;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg,var(--primary),#007bff);
+      color: #fff;
+      border: 0;
+      padding: 10px 14px;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .switcher:hover { opacity: 0.95; }
+
+    @media (max-width: 1100px){
+      .grid{grid-template-columns:1fr}
+      .kpis{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="title">
+      <div class="logo">NHS</div>
+      <div>
+        <h1>NHS A/B Campaign Scheduler</h1>
+      </div>
+    </div>
+    <div class="row">
+      <button id="clearAll" class="btn ghost">🧹 Clear All</button>
+      <a href="./" class="btn secondary">⬅️ Back to Dashboard</a>
+    </div>
+  </div>
+
+  <div class="grid kpis">
+    <div class="card kpi">
+      <h3>Selected Day</h3>
+      <div class="value"><div class="big" id="kpiDay">—</div></div>
+      <div class="mini" id="kpiDayInfo">Pick a date on the calendar</div>
+    </div>
+    <div class="card kpi">
+      <h3>Campaigns On Day</h3>
+      <div class="value"><div class="big" id="kpiCampCount">0</div></div>
+      <div class="mini">Active campaigns on selected day</div>
+    </div>
+    <div class="card kpi">
+      <h3>Cohort Size (loaded)</h3>
+      <div class="value"><div class="big" id="kpiCohort">0</div></div>
+      <div class="mini">Seed or listen to live cohort</div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:4fr 5fr 3fr; gap:16px">
+    <!-- Calendar -->
+    <div class="card section calendar">
+      <div class="cal-header">
+        <button id="prevMonth" class="btn ghost">←</button>
+        <h3 id="monthTitle">Month YYYY</h3>
+        <button id="nextMonth" class="btn ghost">→</button>
+      </div>
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <div class="dow">Mon</div><div class="dow">Tue</div><div class="dow">Wed</div><div class="dow">Thu</div><div class="dow">Fri</div><div class="dow">Sat</div><div class="dow">Sun</div>
+      </div>
+      <div id="calGrid" class="cal-grid"></div>
+
+      <div class="divider"></div>
+      <h2 style="margin-top:6px">Campaigns on Selected Day</h2>
+      <div id="dayCampaigns" class="panel" style="color:#334155">None</div>
+    </div>
+
+    <!-- Campaign builder -->
+    <div class="card section">
+      <h2>A/B Testing Panel</h2>
+      <p class="sub">Configure two variants for a segment and schedule them across days.</p>
+
+      <div class="grid-2">
+        <div>
+          <label>Campaign name</label>
+          <input id="campName" class="input" placeholder="e.g., High-risk Voice vs IVR" />
+        </div>
+        <div>
+          <label>Start date</label>
+          <input id="campStart" type="date" class="input" />
+        </div>
+        <div>
+          <label>End date</label>
+          <input id="campEnd" type="date" class="input" />
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <label>Days of week</label>
+      <div class="row" id="dowGroup">
+        <label class="chip"><input type="checkbox" data-dow="1" checked /> Mon</label>
+        <label class="chip"><input type="checkbox" data-dow="2" checked /> Tue</label>
+        <label class="chip"><input type="checkbox" data-dow="3" checked /> Wed</label>
+        <label class="chip"><input type="checkbox" data-dow="4" checked /> Thu</label>
+        <label class="chip"><input type="checkbox" data-dow="5" checked /> Fri</label>
+        <label class="chip"><input type="checkbox" data-dow="6" /> Sat</label>
+        <label class="chip"><input type="checkbox" data-dow="0" /> Sun</label>
+      </div>
+
+      <div class="divider"></div>
+      <label>Target Segment</label>
+      <div class="row" style="gap:12px">
+        <label class="chip"><input type="radio" name="segType" value="risk" checked /> DNA Risk</label>
+        <label class="chip"><input type="radio" name="segType" value="age" /> Age band</label>
+      </div>
+
+      <div id="segRisk" class="panel">
+        <div class="row">
+          <label class="chip"><input type="checkbox" class="riskChk" value="low" /> Low (0–19%)</label>
+          <label class="chip"><input type="checkbox" class="riskChk" value="med" checked /> Medium (20–49%)</label>
+          <label class="chip"><input type="checkbox" class="riskChk" value="high" checked /> High (50%+)</label>
+        </div>
+      </div>
+      <div id="segAge" class="panel" style="display:none">
+        <div class="row">
+          <label class="chip"><input type="checkbox" class="ageChk" value="18-24" /> 18–24</label>
+          <label class="chip"><input type="checkbox" class="ageChk" value="25-44" checked /> 25–44</label>
+          <label class="chip"><input type="checkbox" class="ageChk" value="45-64" /> 45–64</label>
+          <label class="chip"><input type="checkbox" class="ageChk" value="65+" /> 65+</label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="grid-2">
+        <div>
+          <label>Variant A label</label>
+          <input id="varAName" class="input" value="Voice Manual" />
+        </div>
+        <div>
+          <label>Variant A channel</label>
+          <select id="varAChannel" class="input">
+            <option>Voice Manual</option>
+            <option>Voice IVR</option>
+            <option>SMS</option>
+            <option>SMS (Evening)</option>
+            <option>App Push</option>
+            <option>Email</option>
+          </select>
+        </div>
+        <div>
+          <label>Variant B label</label>
+          <input id="varBName" class="input" value="Voice IVR" />
+        </div>
+        <div>
+          <label>Variant B channel</label>
+          <select id="varBChannel" class="input">
+            <option>Voice IVR</option>
+            <option>Voice Manual</option>
+            <option>SMS</option>
+            <option>SMS (Evening)</option>
+            <option>App Push</option>
+            <option>Email</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <label>Traffic split</label>
+      <div class="row" style="gap:12px">
+        <input id="split" type="range" min="10" max="90" value="50" />
+        <div class="pill" id="splitLabel">50% A / 50% B</div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="row">
+        <button id="saveCamp" class="btn">💾 Save campaign</button>
+        <button id="newCamp" class="btn secondary">➕ New</button>
+        <button id="deleteCamp" class="btn ghost" disabled>🗑️ Delete</button>
+      </div>
+      <div class="mini" id="formStatus" style="margin-top:6px;color:#64748b">Fill the form and click Save to schedule.</div>
+    </div>
+
+    <!-- Cohort + Projections -->
+    <div class="card section">
+      <h2>Assignments & Projections</h2>
+      <p class="sub">Use the selected day and a campaign to simulate assignments and projected uplift.</p>
+      <div class="panel">
+        <div class="row" style="justify-content:space-between">
+          <div class="row">
+            <label class="chip"><input id="liveListen" type="checkbox" /> Listen to live cohort</label>
+          </div>
+          <div class="row">
+            <button id="seed50" class="btn secondary">Seed 50 synthetic</button>
+            <button id="clearCohort" class="btn ghost">Clear cohort</button>
+          </div>
+        </div>
+        <div class="mini" id="cohortNote">Cohort not loaded.</div>
+      </div>
+
+      <div class="divider"></div>
+      <label>Campaign to apply (on selected day)</label>
+      <select id="applyCampaign" class="input"></select>
+      <div class="row" style="margin-top:8px">
+        <button id="applyAssign" class="btn">Apply & Reassign</button>
+        <button id="project" class="btn secondary">Project Uplift</button>
+      </div>
+
+      <canvas id="projChart" height="170" style="margin-top:12px"></canvas>
+      <div class="panel" id="projSummary" style="margin-top:8px">No projection yet.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Storage
+  var LS_KEY = 'abCampaignsV2'; // persists campaigns
+
+  // Assumed attendance uplift by channel (relative to baseline attendance)
+  var CHANNEL_EFFECTS = {
+    'Voice Manual': 0.12,
+    'Voice IVR': 0.08,
+    'SMS': 0.02,
+    'SMS (Evening)': 0.03,
+    'App Push': 0.03,
+    'Email': 0.01
+  };
+
+  // State
+  var state = {
+    month: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    selectedDate: startOfDay(new Date()),
+    campaigns: loadCampaigns(),
+    editingId: null,
+    cohort: [],
+    listenChannel: null
+  };
+
+  // Elements
+  var monthTitle = document.getElementById('monthTitle');
+  var calGrid = document.getElementById('calGrid');
+  var prevMonth = document.getElementById('prevMonth');
+  var nextMonth = document.getElementById('nextMonth');
+  var dayCampaigns = document.getElementById('dayCampaigns');
+
+  var kpiDay = document.getElementById('kpiDay');
+  var kpiDayInfo = document.getElementById('kpiDayInfo');
+  var kpiCampCount = document.getElementById('kpiCampCount');
+  var kpiCohort = document.getElementById('kpiCohort');
+
+  var campName = document.getElementById('campName');
+  var campStart = document.getElementById('campStart');
+  var campEnd = document.getElementById('campEnd');
+  var dowGroup = document.getElementById('dowGroup');
+
+  var segRiskPanel = document.getElementById('segRisk');
+  var segAgePanel = document.getElementById('segAge');
+  var split = document.getElementById('split');
+  var splitLabel = document.getElementById('splitLabel');
+
+  var varAName = document.getElementById('varAName');
+  var varAChannel = document.getElementById('varAChannel');
+  var varBName = document.getElementById('varBName');
+  var varBChannel = document.getElementById('varBChannel');
+
+  var saveCamp = document.getElementById('saveCamp');
+  var newCamp = document.getElementById('newCamp');
+  var deleteCamp = document.getElementById('deleteCamp');
+  var formStatus = document.getElementById('formStatus');
+  var clearAllBtn = document.getElementById('clearAll');
+
+  var applyCampaign = document.getElementById('applyCampaign');
+  var applyAssign = document.getElementById('applyAssign');
+  var projectBtn = document.getElementById('project');
+  var projChartCanvas = document.getElementById('projChart');
+  var projSummary = document.getElementById('projSummary');
+
+  var seed50 = document.getElementById('seed50');
+  var clearCohort = document.getElementById('clearCohort');
+  var liveListen = document.getElementById('liveListen');
+  var cohortNote = document.getElementById('cohortNote');
+
+  // Chart (safe init so calendar still renders even if Chart.js is missing)
+  var projChart = null;
+  try {
+    if (window.Chart && projChartCanvas && projChartCanvas.getContext) {
+      var projChartCtx = projChartCanvas.getContext('2d');
+      projChart = new Chart(projChartCtx, {
+        type:'bar',
+        data:{
+          labels:['Base','Variant A','Variant B','Weighted'],
+          datasets:[{
+            label:'Attendance rate',
+            data:[0,0,0,0],
+            backgroundColor:['#94a3b8','#60a5fa','#34d399','#f59e0b'],
+            borderRadius:8
+          }]
+        },
+        options:{
+          plugins:{ legend:{ display:false }, tooltip:{ callbacks:{
+            label:function(ctx){ return (ctx.raw*100).toFixed(1)+'%'; }
+          } } },
+          scales:{
+            y:{ beginAtZero:true, max:1, ticks:{ callback:function(v){ return (v*100)+'%'; } }, grid:{ color:'#eef2f7' }},
+            x:{ grid:{ display:false } }
+          }
+        }
+      });
+    }
+  } catch(e){ console.error('Chart init failed:', e); }
+
+  // Init
+  renderCalendar();
+  updateSelectedDayUI();
+  renderDayCampaigns();
+  refreshApplyDropdown();
+  splitLabel.textContent = split.value + '% A / ' + (100 - split.value) + '%';
+  clearForm(); // defaults
+
+  // Events
+  prevMonth.onclick = function(){ state.month = addMonths(state.month, -1); renderCalendar(); };
+  nextMonth.onclick = function(){ state.month = addMonths(state.month, 1); renderCalendar(); };
+
+  var segRadios = document.querySelectorAll('input[name="segType"]');
+  for (var i=0;i<segRadios.length;i++){
+    segRadios[i].addEventListener('change', function(){
+      var type = document.querySelector('input[name="segType"]:checked').value;
+      segRiskPanel.style.display = type === 'risk' ? 'block' : 'none';
+      segAgePanel.style.display = type === 'age' ? 'block' : 'none';
+    });
+  }
+
+  split.addEventListener('input', function(){ splitLabel.textContent = split.value + '% A / ' + (100 - split.value) + '%'; });
+
+  saveCamp.onclick = function(){
+    var c = readFormToCampaign();
+    if(!c) return;
+    if(state.editingId){
+      c.id = state.editingId;
+      var i = state.campaigns.findIndex(function(x){ return x.id===c.id; });
+      if(i>=0) state.campaigns[i] = c;
+      formStatus.textContent = 'Campaign updated.';
+    } else {
+      c.id = genId();
+      state.campaigns.push(c);
+      formStatus.textContent = 'Campaign saved.';
+    }
+    saveCampaigns(state.campaigns);
+    renderCalendar();
+    renderDayCampaigns();
+    refreshApplyDropdown();
+    deleteCamp.disabled = !state.editingId;
+  };
+
+  newCamp.onclick = function(){ clearForm(); state.editingId = null; formStatus.textContent='New campaign — fill and Save.'; deleteCamp.disabled = true; };
+
+  deleteCamp.onclick = function(){
+    if(!state.editingId) return;
+    state.campaigns = state.campaigns.filter(function(c){ return c.id !== state.editingId; });
+    saveCampaigns(state.campaigns);
+    clearForm(); state.editingId = null;
+    renderCalendar(); renderDayCampaigns(); refreshApplyDropdown();
+    deleteCamp.disabled = true; formStatus.textContent='Campaign deleted.';
+  };
+
+  clearAllBtn.onclick = function(){
+    var ok = confirm('Clear all campaigns and cohort? This cannot be undone.');
+    if(!ok) return;
+    localStorage.removeItem(LS_KEY);
+    state.campaigns = [];
+    state.cohort = [];
+    renderCalendar(); renderDayCampaigns(); refreshApplyDropdown();
+    kpiCohort.textContent = 0;
+    cohortNote.textContent = 'All cleared.';
+    formStatus.textContent = 'All cleared.';
+    clearForm();
+  };
+
+  applyAssign.onclick = function(){
+    var campId = applyCampaign.value;
+    var camp = state.campaigns.find(function(c){ return c.id===campId; });
+    if(!camp){ projSummary.textContent = 'Select a campaign to apply.'; return; }
+    var subset = cohortForCampaignOnDay(camp, state.selectedDate, state.cohort);
+    subset.forEach(function(p){
+      var chooseA = Math.random()*100 < camp.split;
+      p.variant = chooseA ? camp.varA.name : camp.varB.name;
+      p.channel = chooseA ? camp.varA.channel : camp.varB.channel;
+    });
+    projSummary.textContent = 'Assigned '+subset.length+' participants on '+fmtDate(state.selectedDate)+' to '+camp.varA.name+' ('+camp.varA.channel+') and '+camp.varB.name+' ('+camp.varB.channel+') — split '+camp.split+'% / '+(100-camp.split)+'%.';
+  };
+
+  projectBtn.onclick = function(){
+    var campId = applyCampaign.value;
+    var camp = state.campaigns.find(function(c){ return c.id===campId; });
+    if(!camp){ projSummary.textContent = 'Select a campaign to project.'; return; }
+    var subset = cohortForCampaignOnDay(camp, state.selectedDate, state.cohort);
+    var baseAttend = avg(subset.map(function(p){ return Math.max(0, 1 - p.risk); }));
+    var effA = channelEffect(camp.varA.channel);
+    var effB = channelEffect(camp.varB.channel);
+    var aAttend = avg(subset.map(function(p){ return Math.min(1, Math.max(0, 1 - p.risk) + effA); }));
+    var bAttend = avg(subset.map(function(p){ return Math.min(1, Math.max(0, 1 - p.risk) + effB); }));
+    var weighted = (aAttend*(camp.split/100)) + (bAttend*((100 - camp.split)/100));
+    if(projChart){
+      projChart.data.datasets[0].data = [baseAttend, aAttend, bAttend, weighted];
+      projChart.update();
+    }
+    var upliftA = ((aAttend - baseAttend) * 100).toFixed(1);
+    var upliftB = ((bAttend - baseAttend) * 100).toFixed(1);
+    var upliftW = ((weighted - baseAttend) * 100).toFixed(1);
+    projSummary.innerHTML =
+      'Cohort in segment: <b>'+subset.length+'</b><br/>' +
+      'Base attendance: <b>'+ (baseAttend*100).toFixed(1) +'%</b><br/>' +
+      'Variant A ('+camp.varA.name+', '+camp.varA.channel+'): <b>'+ (aAttend*100).toFixed(1) +'%</b> (Δ '+upliftA+' pp)<br/>' +
+      'Variant B ('+camp.varB.name+', '+camp.varB.channel+'): <b>'+ (bAttend*100).toFixed(1) +'%</b> (Δ '+upliftB+' pp)<br/>' +
+      'Weighted (split '+camp.split+'/'+(100-camp.split)+'): <b>'+ (weighted*100).toFixed(1) +'%</b> (Δ '+upliftW+' pp)';
+  };
+
+  seed50.onclick = function(){
+    for(var i=0;i<50;i++){ state.cohort.push(makeParticipant(randomPayload())); }
+    kpiCohort.textContent = state.cohort.length;
+    cohortNote.textContent = 'Synthetic cohort loaded.';
+  };
+  clearCohort.onclick = function(){ state.cohort.length = 0; kpiCohort.textContent = 0; cohortNote.textContent = 'Cohort cleared.'; };
+
+  liveListen.addEventListener('change', function(){
+    if(liveListen.checked){
+      if('BroadcastChannel' in window){
+        state.listenChannel = new BroadcastChannel('dna-demo');
+        state.listenChannel.onmessage = function(ev){
+          if(ev && ev.data && ev.data.type === 'submission' && ev.data.payload){
+            state.cohort.push(makeParticipant(ev.data.payload));
+            kpiCohort.textContent = state.cohort.length;
+            cohortNote.textContent = 'Listening to live cohort.';
+          }
+        };
+        cohortNote.textContent = 'Listening to live cohort.';
+      } else {
+        cohortNote.textContent = 'BroadcastChannel not supported.';
+        liveListen.checked = false;
+      }
+    } else {
+      if(state.listenChannel){ state.listenChannel.close(); state.listenChannel = null; }
+      cohortNote.textContent = 'Stopped listening.';
+    }
+  });
+
+  // Calendar rendering (robust loop)
+  function renderCalendar(){
+    var monthStart = startOfMonth(state.month);
+    var monthEnd = endOfMonth(state.month);
+    var firstDisplay = startOfWeek(monthStart); // Monday
+    var lastDisplay = endOfWeek(monthEnd);      // Sunday
+    monthTitle.textContent = state.month.toLocaleString('en-GB', { month:'long', year:'numeric' });
+
+    calGrid.innerHTML = '';
+    // iterate by timestamp (avoids DST quirks)
+    for (var t = firstDisplay.getTime(); t <= lastDisplay.getTime(); t += 86400000){
+      var date = new Date(t);
+      var dayEl = document.createElement('div');
+      dayEl.className = 'day';
+      if(date.getMonth() !== state.month.getMonth()) dayEl.classList.add('other');
+      if(isSameDay(date, new Date())) dayEl.classList.add('today');
+      if(isSameDay(date, state.selectedDate)) dayEl.classList.add('selected');
+
+      var num = document.createElement('div');
+      num.className = 'num'; num.textContent = date.getDate();
+      var dots = document.createElement('div');
+      dots.className = 'dotrow';
+
+      var camps = activeCampaignsOn(date, state.campaigns);
+      for (var i=0;i<Math.min(6, camps.length); i++){
+        var dot = document.createElement('div');
+        dot.className='dot'; dot.style.background = colorForCampaign(camps[i]);
+        dots.appendChild(dot);
+      }
+      if(camps.length>6){
+        var more = document.createElement('div'); more.className='mini'; more.textContent = '+'+(camps.length-6);
+        dots.appendChild(more);
+      }
+
+      dayEl.appendChild(num);
+      dayEl.appendChild(dots);
+      (function(dcopy){
+        dayEl.onclick = function(){ state.selectedDate = startOfDay(dcopy); renderCalendar(); updateSelectedDayUI(); renderDayCampaigns(); };
+      })(new Date(date.getTime()));
+      calGrid.appendChild(dayEl);
+    }
+  }
+
+  function updateSelectedDayUI(){
+    kpiDay.textContent = fmtDate(state.selectedDate);
+    var w = state.selectedDate.toLocaleString('en-GB', { weekday:'long' });
+    kpiDayInfo.textContent = w;
+    var count = activeCampaignsOn(state.selectedDate, state.campaigns).length;
+    kpiCampCount.textContent = count;
+  }
+
+  function renderDayCampaigns(){
+    var camps = activeCampaignsOn(state.selectedDate, state.campaigns);
+    if(camps.length === 0){ dayCampaigns.innerHTML = 'None'; }
+    else {
+      dayCampaigns.innerHTML = '';
+      camps.forEach(function(c){
+        var row = document.createElement('div');
+        row.className = 'row'; row.style.justifyContent='space-between';
+        row.style.marginBottom='6px';
+        row.innerHTML =
+          '<div class="row" style="gap:10px">' +
+            '<span class="dot" style="background:'+colorForCampaign(c)+'"></span>' +
+            '<span class="pill">'+escapeHtml(c.name)+'</span>' +
+            '<span class="chip">'+segToText(c.segment)+'</span>' +
+            '<span class="chip">'+escapeHtml(c.varA.name)+' ('+c.varA.channel+') vs '+escapeHtml(c.varB.name)+' ('+c.varB.channel+')</span>' +
+            '<span class="chip">'+c.split+'% / '+(100-c.split)+'%</span>' +
+          '</div>' +
+          '<div class="row"><button class="btn ghost btn-edit">Edit</button></div>';
+        row.querySelector('.btn-edit').onclick = function(){ loadCampaignToForm(c.id); };
+        dayCampaigns.appendChild(row);
+      });
+    }
+    refreshApplyDropdown();
+  }
+
+  function refreshApplyDropdown(){
+    var camps = activeCampaignsOn(state.selectedDate, state.campaigns);
+    applyCampaign.innerHTML = '';
+    if(camps.length === 0) applyCampaign.innerHTML = '<option value="">— No campaigns active —</option>';
+    camps.forEach(function(c){
+      var opt = document.createElement('option');
+      opt.value = c.id; opt.textContent = c.name + ' (' + segToText(c.segment) + ')';
+      applyCampaign.appendChild(opt);
+    });
+  }
+
+  // Form helpers
+  function readFormToCampaign(){
+    var name = campName.value.trim();
+    var start = campStart.value;
+    var end = campEnd.value;
+    var dow = Array.prototype.map.call(dowGroup.querySelectorAll('input[type="checkbox"]:checked'), function(x){ return parseInt(x.dataset.dow,10); });
+    if(!name){ formStatus.textContent='Please add a name.'; return null; }
+    if(!start || !end){ formStatus.textContent='Please select start and end dates.'; return null; }
+    if(new Date(start) > new Date(end)){ formStatus.textContent='Start must be before End.'; return null; }
+    if(dow.length===0){ formStatus.textContent='Select at least one day of week.'; return null; }
+
+    var segType = document.querySelector('input[name="segType"]:checked').value;
+    var segment;
+    if(segType === 'risk'){
+      var picks = Array.prototype.map.call(document.querySelectorAll('.riskChk:checked'), function(x){ return x.value; });
+      if(picks.length===0){ formStatus.textContent='Pick at least one risk band.'; return null; }
+      segment = { type:'risk', risks:picks };
+    } else {
+      var picksA = Array.prototype.map.call(document.querySelectorAll('.ageChk:checked'), function(x){ return x.value; });
+      if(picksA.length===0){ formStatus.textContent='Pick at least one age band.'; return null; }
+      segment = { type:'age', ages:picksA };
+    }
+
+    var varA = { name: (varAName.value.trim()||'Variant A'), channel: varAChannel.value };
+    var varB = { name: (varBName.value.trim()||'Variant B'), channel: varBChannel.value };
+
+    return {
+      id: null,
+      name: name,
+      start: start, end: end,
+      dow: dow,
+      segment: segment,
+      varA: varA, varB: varB,
+      split: parseInt(split.value,10)
+    };
+  }
+
+  function clearForm(){
+    campName.value='';
+    var today = new Date();
+    campStart.value = toInputDate(today);
+    campEnd.value = toInputDate(addDays(today, 7));
+    dowGroup.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+      cb.checked = ['1','2','3','4','5'].indexOf(cb.dataset.dow) !== -1; // weekdays
+    });
+    document.querySelector('input[name="segType"][value="risk"]').checked = true;
+    segRiskPanel.style.display='block'; segAgePanel.style.display='none';
+    document.querySelectorAll('.riskChk').forEach(function(ch){ ch.checked = (ch.value!=='low'); }); // med+high default
+    document.querySelectorAll('.ageChk').forEach(function(ch){ ch.checked = (ch.value==='25-44'); });
+    varAName.value='Voice Manual'; varAChannel.value='Voice Manual';
+    varBName.value='Voice IVR';    varBChannel.value='Voice IVR';
+    split.value=50; splitLabel.textContent='50% A / 50% B';
+    formStatus.textContent='—';
+  }
+
+  function loadCampaignToForm(id){
+    var c = state.campaigns.find(function(x){ return x.id===id; });
+    if(!c) return;
+    state.editingId = c.id;
+    campName.value = c.name;
+    campStart.value = c.start; campEnd.value = c.end;
+    dowGroup.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+      cb.checked = c.dow.indexOf(parseInt(cb.dataset.dow,10)) !== -1;
+    });
+    if(c.segment.type==='risk'){
+      document.querySelector('input[name="segType"][value="risk"]').checked = true;
+      segRiskPanel.style.display='block'; segAgePanel.style.display='none';
+      document.querySelectorAll('.riskChk').forEach(function(ch){ ch.checked = c.segment.risks.indexOf(ch.value)!==-1; });
+    } else {
+      document.querySelector('input[name="segType"][value="age"]').checked = true;
+      segRiskPanel.style.display='none'; segAgePanel.style.display='block';
+      document.querySelectorAll('.ageChk').forEach(function(ch){ ch.checked = c.segment.ages.indexOf(ch.value)!==-1; });
+    }
+    varAName.value = c.varA.name; varAChannel.value = c.varA.channel;
+    varBName.value = c.varB.name; varBChannel.value = c.varB.channel;
+    split.value = c.split; splitLabel.textContent = c.split + '% A / ' + (100-c.split) + '%';
+    deleteCamp.disabled = false;
+    formStatus.textContent='Loaded campaign for editing. Save to update.';
+  }
+
+  // Projection helpers
+  function cohortForCampaignOnDay(camp, date, cohort){
+    if(!isCampaignActiveOn(camp, date)) return [];
+    return cohort.filter(function(p){ return matchesSegment(p, camp.segment); });
+  }
+
+  function matchesSegment(p, segment){
+    if(segment.type==='risk'){
+      var band = riskBand(p.risk);
+      return segment.risks.indexOf(band)!==-1;
+    } else {
+      return segment.ages.indexOf(p.input.age_band)!==-1;
+    }
+  }
+
+  function channelEffect(channel){
+    return CHANNEL_EFFECTS[channel] || 0;
+  }
+
+  // Data + scoring (align with dashboard logic)
+  function makeParticipant(payload){
+    var r = scoreRisk(payload, { weather:'sun', transport:'ok' });
+    return { id: genId(), input: payload, risk: r/100, variant: null, channel: null };
+  }
+
+  function scoreRisk(input, ctx){
+    var risk = 0.18;
+    if(input.prior_dnas === 1){ risk += 0.22; }
+    if(input.prior_dnas >= 2){ risk += 0.35; }
+    if(input.age_band === '18-24'){ risk += 0.06; }
+    if(input.age_band === '65+'){ risk += 0.03; }
+    var dp = (input.day_part||'').toLowerCase();
+    if(dp === 'morning'){ risk += 0.04; }
+    if(dp === 'evening'){ risk += 0.02; }
+    if(input.conflict){ risk += 0.08; }
+    if((input.transport_mode||'').toLowerCase() === 'public'){ risk += 0.04; }
+    if(ctx.weather === 'rain'){ risk += 0.05; }
+    if(ctx.transport === 'disrupt'){ risk += 0.08; }
+    if(input.appointment_type === 'Mental Health'){ risk += 0.03; }
+    risk = Math.max(0, Math.min(risk, 0.95));
+    return Math.round(risk*100);
+  }
+
+  function randomPayload(){
+    var ageBands = ['18-24','25-44','45-64','65+'];
+    var types = ['General','Physiotherapy','Cardiology','Mental Health'];
+    var dps = ['Morning','Afternoon','Evening'];
+    var transports = ['Public','Car','Walk'];
+    function pick(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+    return {
+      age_band: pick(ageBands),
+      appointment_type: pick(types),
+      day_part: pick(dps),
+      prior_dnas: pick([0,0,0,1,1,2,3]),
+      transport_mode: pick(transports),
+      conflict: Math.random()<0.35
+    };
+  }
+
+  // Utils
+  function segToText(seg){
+    if(seg.type==='risk'){
+      var map = { low:'0–19%', med:'20–49%', high:'50%+' };
+      return 'Risk: ' + seg.risks.map(function(r){ return map[r]; }).join(', ');
+    } else {
+      return 'Age: ' + seg.ages.join(', ');
+    }
+  }
+
+  function riskBand(risk01){
+    var r = Math.round(risk01*100);
+    if(r<20) return 'low';
+    if(r<50) return 'med';
+    return 'high';
+  }
+
+  function activeCampaignsOn(date, campaigns){ return campaigns.filter(function(c){ return isCampaignActiveOn(c, date); }); }
+  function isCampaignActiveOn(c, date){
+    var d = startOfDay(date);
+    var dow = d.getDay(); // 0 Sun .. 6 Sat
+    return (new Date(c.start) <= d && d <= new Date(c.end) && c.dow.indexOf(dow)!==-1);
+  }
+  function colorForCampaign(c){
+    if(c.segment.type==='risk'){
+      if(c.segment.risks.indexOf('high')!==-1) return '#ef4444';
+      if(c.segment.risks.indexOf('med')!==-1) return '#f59e0b';
+      return '#10b981';
+    } else {
+      if(c.segment.ages.indexOf('65+')!==-1) return '#64748b';
+      if(c.segment.ages.indexOf('45-64')!==-1) return '#0ea5e9';
+      if(c.segment.ages.indexOf('25-44')!==-1) return '#6366f1';
+      return '#14b8a6';
+    }
+  }
+  function saveCampaigns(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
+  function loadCampaigns(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'[]'); } catch(e){ return []; } }
+  function genId(){ return (self.crypto && self.crypto.randomUUID ? self.crypto.randomUUID() : (Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8))); }
+  function startOfDay(d){ var x=new Date(d); x.setHours(0,0,0,0); return x; }
+  function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+  function startOfWeek(d){ var day=(d.getDay()+6)%7; var x=new Date(d); x.setDate(x.getDate()-day); x.setHours(0,0,0,0); return x; } // Monday
+  function endOfWeek(d){ var start = startOfWeek(d); var x=new Date(start); x.setDate(x.getDate()+6); return x; }
+  function addMonths(d, n){ var x=new Date(d); x.setMonth(x.getMonth()+n); return x; }
+  function addDays(d, n){ var x=new Date(d); x.setDate(x.getDate()+n); return x; }
+  function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+  function fmtDate(d){ return d.toLocaleDateString('en-GB'); }
+  function toInputDate(d){ var y=d.getFullYear(); var m=('0'+(d.getMonth()+1)).slice(-2); var day=('0'+d.getDate()).slice(-2); return y+'-'+m+'-'+day; }
+  function avg(arr){ if(!arr.length) return 0; return arr.reduce(function(a,b){ return a+b; },0)/arr.length; }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(ch){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]); }); }
+})();
+</script>
+
+<!-- Floating switch button -->
+<script>
+(function(){
+  try {
+    var el = document.createElement('a');
+    el.className = 'switcher';
+    el.href = new URL('./', location.href).href;
+    el.textContent = '⬅️ Back to Dashboard';
+    el.setAttribute('aria-label', el.textContent);
+    document.body.appendChild(el);
+  } catch (e) { console.error('Switcher init failed', e); }
+})();
+</script>
+</body>
+</html>
