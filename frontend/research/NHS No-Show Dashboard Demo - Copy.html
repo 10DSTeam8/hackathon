@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NHS No-Show Reduction — A/B Testing Dashboard (Demo)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    :root{
+      --primary:#005EB8; /* NHS blue vibe */
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --text:#0b1324;
+      --muted:#667085;
+      --success:#10b981;
+      --warning:#f59e0b;
+      --danger:#ef4444;
+      --ring:#e5e7eb;
+      --shadow:0 10px 30px rgba(2,16,63,.08), 0 2px 8px rgba(2,16,63,.05);
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #dfeafb 0%, transparent 60%),
+        radial-gradient(1200px 600px at 110% 0%, #eaf3ff 0%, transparent 60%),
+        var(--bg);
+    }
+    a{color:var(--primary);text-decoration:none}
+    .container{max-width:1280px;margin:0 auto;padding:24px;}
+    .header{
+      display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;
+    }
+    .title{
+      display:flex;align-items:center;gap:14px;
+    }
+    .logo{
+      width:42px;height:42px;border-radius:10px;
+      background:linear-gradient(135deg,var(--primary),#007bff);
+      box-shadow:inset 0 0 30px rgba(255,255,255,.15), var(--shadow);
+      display:flex;align-items:center;justify-content:center;color:white;font-weight:800;
+      letter-spacing:0.5px;
+    }
+    .title h1{margin:0;font-weight:800;font-size:22px}
+    .badges{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .badge{
+      font-size:12px;padding:6px 10px;border-radius:999px;background:#eef2ff;color:#1f3a7b;border:1px solid #d6e0ff;
+      display:inline-flex;align-items:center;gap:8px;
+    }
+    .controls{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    }
+    .control-group{
+      background:var(--card);border:1px solid var(--ring);border-radius:999px;padding:6px 8px;display:flex;gap:6px;box-shadow:var(--shadow);
+    }
+    .toggle{
+      padding:8px 12px;border-radius:999px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;
+    }
+    .toggle.active{background:#eef6ff;color:#07396e;border-color:#cfe3ff}
+    .btn{
+      background:linear-gradient(135deg,var(--primary),#007bff);color:white;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:700;box-shadow:var(--shadow)
+    }
+    .btn.secondary{background:#f1f5f9;color:#0b1324;border:1px solid #dfe3ea}
+    .grid{
+      display:grid;grid-template-columns:repeat(12,1fr);gap:16px;
+    }
+    .card{
+      background:var(--card);border:1px solid var(--ring);border-radius:var(--radius);box-shadow:var(--shadow);
+    }
+    .kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:12px}
+    .kpi{padding:18px}
+    .kpi h3{margin:0 0 6px 0;font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+    .kpi .value{display:flex;align-items:center;gap:10px}
+    .big{font-size:28px;font-weight:800}
+    .delta.up{color:var(--success)}
+    .delta.flat{color:var(--muted)}
+    .delta.down{color:var(--danger)}
+    .ring{
+      --angle: 120deg; --color: var(--success);
+      width:54px;height:54px;border-radius:50%;
+      background:
+        conic-gradient(var(--color) var(--angle), #e8edf7 0);
+      display:grid;place-items:center;
+      margin-right:4px;border:3px solid #fff;box-shadow:0 1px 0 rgba(0,0,0,0.02) inset;
+    }
+    .ring span{font-size:12px;font-weight:800;color:#0b1324}
+    .main{
+      grid-column:1/-1;display:grid;grid-template-columns:4fr 4fr 4fr;gap:16px;
+    }
+    .section{padding:16px}
+    .section h2{margin:0 0 8px 0;font-size:16px}
+    .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+    .stream{max-height:520px;overflow:auto;padding-right:6px}
+    .stream .item{
+      border:1px solid #e8ebf2;border-radius:12px;padding:12px;display:flex;gap:12px;margin-bottom:12px;background:#fbfdff;
+      animation:fadeInUp .3s ease;
+    }
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .risk-dot{width:12px;height:12px;border-radius:50%}
+    .badge-sm{font-size:12px;background:#f2f4f7;border:1px solid #e5e7eb;padding:4px 8px;border-radius:999px;color:#111827}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .mini{font-size:12px;color:var(--muted)}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{font-size:11px;background:#f8fafc;border:1px solid #e5e7eb;color:#334155;padding:4px 8px;border-radius:999px}
+    .footer{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
+    .panel{background:#f9fbff;border:1px dashed #dbe7ff;border-radius:12px;padding:12px;margin-top:8px}
+    .input, select{
+      padding:10px 12px;border-radius:10px;border:1px solid #d9dfeb;background:white;font-size:14px;width:100%
+    }
+    label{font-size:12px;color:#475569;font-weight:600}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+    .divider{height:1px;background:#eaeef6;margin:10px 0}
+    .pill{border-radius:999px;padding:6px 10px;background:#eef6ff;border:1px solid #d4e4ff;color:#07396e;font-size:12px}
+    .hl{font-weight:700}
+    .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .copy{font-size:12px;background:#eef2ff;border:1px solid #d6e0ff;color:#1f3a7b;padding:8px 10px;border-radius:10px;cursor:pointer}
+    /* Public form view */
+    .center{min-height:100dvh;display:grid;place-items:center;padding:24px}
+    .form-card{max-width:560px;width:100%;padding:18px}
+    .qr-wrap{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .note{font-size:12px;color:var(--muted)}
+    .sticky{position:sticky;top:12px}
+    .small{font-size:13px;color:var(--muted)}
+    .ghost{opacity:.85}
+    .btn.ghost{background:#ffffff;border:1px solid #e5e7eb;color:#0b1324}
+  </style>
+</head>
+<body>
+
+<div id="dashboardView" class="container" hidden>
+  <div class="header">
+    <div class="title">
+      <div class="logo">NH</div>
+      <div>
+        <h1>NHS No‑Show Reduction — A/B Testing Dashboard</h1>
+        <div class="badges">
+          <span class="badge">Demo Mode: no real messages sent</span>
+          <span class="badge">Live risk scoring</span>
+          <span class="badge">Audience submissions stream in</span>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="control-group" id="weatherGroup">
+        <button class="toggle active" data-weather="sun">☀️ Sun</button>
+        <button class="toggle" data-weather="rain">🌧️ Rain</button>
+      </div>
+      <div class="control-group" id="transportGroup">
+        <button class="toggle active" data-transport="ok">🚆 Normal</button>
+        <button class="toggle" data-transport="disrupt">⚠️ Disruption</button>
+      </div>
+      <button id="simulateBtn" class="btn secondary">▶️ Simulate Participants</button>
+      <button id="resetBtn" class="btn ghost">♻️ Clear</button>
+    </div>
+  </div>
+
+  <div class="grid kpis">
+    <div class="card kpi">
+      <h3>Live Participants</h3>
+      <div class="value">
+        <div class="big" id="kpiParticipants">0</div>
+        <div class="delta flat" id="kpiParticipantsDelta">+0 now</div>
+      </div>
+      <div class="small">Audience entries flowing into the dashboard</div>
+    </div>
+    <div class="card kpi">
+      <h3>Average Risk</h3>
+      <div class="value">
+        <div class="ring" id="avgRing"><span id="avgRingVal">0%</span></div>
+        <div>
+          <div class="big" id="kpiAvgRisk">0%</div>
+          <div class="mini" id="kpiRiskLabel">Low</div>
+        </div>
+      </div>
+    </div>
+    <div class="card kpi">
+      <h3>Predicted No‑Shows</h3>
+      <div class="value">
+        <div class="big" id="kpiNoShows">0.0</div>
+        <div class="delta flat" id="kpiNoShowsDelta">+0 vs sunny</div>
+      </div>
+      <div class="small">Sum of risk probabilities across entries</div>
+    </div>
+    <div class="card kpi">
+      <h3>Overbooking Suggestion</h3>
+      <div class="value">
+        <div class="big" id="kpiOverbook">+0</div>
+        <div class="mini" id="kpiConfidence">Confidence: —</div>
+      </div>
+      <div class="small">Adjust slots to match expected DNAs</div>
+    </div>
+  </div>
+
+  <div class="grid main">
+    <div class="card section">
+      <div class="toolbar">
+        <h2 style="margin-right:auto">Live Stream</h2>
+        <span class="pill">Filter</span>
+        <button class="toggle active" data-filter="all">All</button>
+        <button class="toggle" data-filter="low">Low</button>
+        <button class="toggle" data-filter="med">Medium</button>
+        <button class="toggle" data-filter="high">High</button>
+      </div>
+      <p class="sub">New audience entries appear here with risk and recommended communication.</p>
+      <div class="stream" id="stream"></div>
+    </div>
+
+    <div class="card section sticky">
+      <h2>Risk Overview</h2>
+      <p class="sub">Distribution of no‑show risk across current entries.</p>
+      <canvas id="riskChart" height="200"></canvas>
+      <div class="divider"></div>
+      <h2>A/B Testing Panel</h2>
+      <p class="sub">Configure two variants for a segment and see projected attendance uplift (simulated).</p>
+      <div class="panel">
+        <div class="grid-2">
+          <div>
+            <label>Target Segment</label>
+            <select id="abSegment">
+              <option value="low">Low risk (0–19%)</option>
+              <option value="med">Medium risk (20–49%)</option>
+              <option value="high" selected>High risk (50%+)</option>
+            </select>
+          </div>
+          <div>
+            <label>Channel (auto from recommendation)</label>
+            <input class="input" value="Auto (e.g., Voice for High)" disabled />
+          </div>
+
+          <div>
+            <label>Variant A label</label>
+            <input id="varAName" class="input" value="Voice Manual" />
+          </div>
+          <div>
+            <label>Variant A effect (+% attendance)</label>
+            <input id="varAEffect" class="input" type="number" value="12" />
+          </div>
+
+          <div>
+            <label>Variant B label</label>
+            <input id="varBName" class="input" value="Voice IVR" />
+          </div>
+          <div>
+            <label>Variant B effect (+% attendance)</label>
+            <input id="varBEffect" class="input" type="number" value="8" />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="applyAB" class="btn">Apply & Reassign</button>
+          <button id="projectAB" class="btn secondary">Project Uplift</button>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <canvas id="abChart" height="170"></canvas>
+      </div>
+
+      <div class="divider"></div>
+      <h2>Outcomes & Calibration</h2>
+      <p class="sub">Record arrivals/no‑shows to validate predictions and calibration.</p>
+      <div class="grid-2">
+        <div class="panel">Outcomes recorded: <span class="hl" id="outCount">0</span></div>
+        <div class="panel">Accuracy @ 50% threshold: <span class="hl" id="outAcc">—</span></div>
+      </div>
+      <div class="actions">
+        <button id="simulateOutcomes" class="btn secondary">🎲 Simulate 10 outcomes</button>
+        <button id="resetOutcomes" class="btn ghost">🧹 Clear outcomes</button>
+      </div>
+      <canvas id="calibChart" height="170" style="margin-top:8px"></canvas>
+
+      <div class="divider"></div>
+      <h2>Share Public Form</h2>
+      <div class="qr-wrap">
+        <div id="qr" style="width:110px;height:110px;border-radius:12px;border:1px solid #e5e7eb;background:white;display:grid;place-items:center"></div>
+        <div>
+          <div class="small">Audience link:</div>
+          <div id="publicLink" style="font-weight:700;word-break:break-all;margin:6px 0"></div>
+          <div class="actions">
+            <button id="copyLink" class="copy">Copy link</button>
+            <a id="openForm" class="btn" target="_blank">Open Form</a>
+            <button id="seedBtn" class="btn secondary">Seed 20 Synthetic</button>
+          </div>
+          <div class="note">Tip: Put this QR on your slide so the audience can join.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card section">
+      <h2>Inspector</h2>
+      <p class="sub">Click a card in the stream to see the “why” and assigned variant.</p>
+      <div id="inspector">
+        <div class="small ghost">No selection yet. Pick a participant from the left.</div>
+      </div>
+      <div class="divider"></div>
+      <h2>Quick Add (for dry runs)</h2>
+      <div class="grid-2" style="margin-bottom:8px">
+        <div>
+          <label>Age band</label>
+          <select id="qaAge">
+            <option>18-24</option><option selected>25-44</option><option>45-64</option><option>65+</option>
+          </select>
+        </div>
+        <div>
+          <label>Appointment type</label>
+          <select id="qaType">
+            <option>General</option><option>Physiotherapy</option><option>Cardiology</option><option>Mental Health</option>
+          </select>
+        </div>
+        <div>
+          <label>Time of day</label>
+          <select id="qaDayPart">
+            <option>Morning</option><option selected>Afternoon</option><option>Evening</option>
+          </select>
+        </div>
+        <div>
+          <label>Prior missed appointments</label>
+          <select id="qaDNAs">
+            <option>0</option><option>1</option><option>2</option><option>3+</option>
+          </select>
+        </div>
+        <div>
+          <label>Transport</label>
+          <select id="qaTransport">
+            <option selected>Public</option><option>Car</option><option>Walk</option>
+          </select>
+        </div>
+        <div>
+          <label>Work/childcare conflict?</label>
+          <select id="qaConflict">
+            <option>No</option><option selected>Yes</option>
+          </select>
+        </div>
+      </div>
+      <button id="qaAdd" class="btn">➕ Add to Stream</button>
+    </div>
+  </div>
+
+  <div class="footer">This is a live demo with synthetic/anonymised data. For pilots, integrate with booking systems and messaging APIs.</div>
+</div>
+
+<!-- Public Form View -->
+<div id="publicFormView" hidden>
+  <div class="center">
+    <div class="card form-card">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+        <div class="logo" style="width:36px;height:36px">NH</div>
+        <div>
+          <h2 style="margin:0">Appointment Reminder Study (Demo)</h2>
+          <div class="small">Help us test smarter reminders to reduce missed appointments.</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <form id="publicForm">
+        <div class="grid-2">
+          <div>
+            <label>Age band</label>
+            <select class="input" name="age">
+              <option>18-24</option><option>25-44</option><option>45-64</option><option>65+</option>
+            </select>
+          </div>
+          <div>
+            <label>Appointment type</label>
+            <select class="input" name="type">
+              <option>General</option><option>Physiotherapy</option><option>Cardiology</option><option>Mental Health</option>
+            </select>
+          </div>
+          <div>
+            <label>Time of day</label>
+            <select class="input" name="daypart">
+              <option>Morning</option><option>Afternoon</option><option>Evening</option>
+            </select>
+          </div>
+          <div>
+            <label>Prior missed appointments</label>
+            <select class="input" name="dnas">
+              <option>0</option><option>1</option><option>2</option><option>3+</option>
+            </select>
+          </div>
+          <div>
+            <label>Transport mode</label>
+            <select class="input" name="transport">
+              <option>Public</option><option>Car</option><option>Walk</option>
+            </select>
+          </div>
+          <div>
+            <label>Work/childcare conflict likely?</label>
+            <select class="input" name="conflict">
+              <option>No</option><option>Yes</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin:10px 0">
+          <label class="small"><input type="checkbox" name="consent" required /> I understand this is a demo and no real messages will be sent.</label>
+        </div>
+        <div class="actions">
+          <button class="btn" type="submit">Submit</button>
+          <a class="btn secondary" href="./">View Dashboard</a>
+        </div>
+      </form>
+      <div id="thanks" class="panel" style="display:none">
+        <div style="font-weight:700;margin-bottom:4px">Thanks! Your anonymous entry was received.</div>
+        <div class="small">You can close this tab now.</div>
+      </div>
+      <div class="divider"></div>
+      <div class="note">We only ask for general info (no personal identifiers). Your response appears instantly on the live dashboard.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const urlParams = new URLSearchParams(location.search);
+  const isPublicForm = urlParams.get('public') === '1';
+  const dashboardView = document.getElementById('dashboardView');
+  const publicFormView = document.getElementById('publicFormView');
+
+  if(isPublicForm){
+    publicFormView.hidden = false;
+    setupPublicForm();
+  } else {
+    dashboardView.hidden = false;
+    setupDashboard();
+  }
+
+  function setupPublicForm(){
+    const form = document.getElementById('publicForm');
+    const thanks = document.getElementById('thanks');
+    const channel = ('BroadcastChannel' in window) ? new BroadcastChannel('dna-demo') : null;
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form));
+      if(!data.consent) return;
+      const payload = {
+        age_band: data.age,
+        appointment_type: data.type,
+        day_part: data.daypart,
+        prior_dnas: normalizeDNAs(data.dnas),
+        transport_mode: data.transport,
+        conflict: data.conflict === 'Yes'
+      };
+      if(channel){
+        channel.postMessage({type:'submission', payload});
+      }
+      form.style.display = 'none';
+      thanks.style.display = 'block';
+    });
+
+    function normalizeDNAs(v){
+      if(v === '3+') return 3;
+      return parseInt(v||'0',10);
+    }
+  }
+
+  function setupDashboard(){
+    // State
+    const state = {
+      items: [],
+      ctx: { weather: 'sun', transport: 'ok' },
+      ab: {
+        segment: 'high',
+        variants: [
+          { name: 'Voice Manual', effect: 0.12 },
+          { name: 'Voice IVR', effect: 0.08 }
+        ]
+      },
+      baselines: { weather: 'sun', transport: 'ok' },
+      simTimer: null,
+      participantsPulseTimeout: null
+    };
+
+    // Outcome tracking
+    const predictionLog = new Map(); // id -> predicted prob at scoring time
+    const outcomes = [];             // { id, p, y (1=DNA), yhat }
+
+    // Elements
+    const weatherGroup = document.getElementById('weatherGroup');
+    const transportGroup = document.getElementById('transportGroup');
+    const streamEl = document.getElementById('stream');
+
+    const kpiParticipants = document.getElementById('kpiParticipants');
+    const kpiParticipantsDelta = document.getElementById('kpiParticipantsDelta');
+    const kpiAvgRisk = document.getElementById('kpiAvgRisk');
+    const kpiRiskLabel = document.getElementById('kpiRiskLabel');
+    const avgRing = document.getElementById('avgRing');
+    const avgRingVal = document.getElementById('avgRingVal');
+    const kpiNoShows = document.getElementById('kpiNoShows');
+    const kpiNoShowsDelta = document.getElementById('kpiNoShowsDelta');
+    const kpiOverbook = document.getElementById('kpiOverbook');
+    const kpiConfidence = document.getElementById('kpiConfidence');
+
+    const simulateBtn = document.getElementById('simulateBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const abSegment = document.getElementById('abSegment');
+    const varAName = document.getElementById('varAName');
+    const varAEffect = document.getElementById('varAEffect');
+    const varBName = document.getElementById('varBName');
+    const varBEffect = document.getElementById('varBEffect');
+    const applyAB = document.getElementById('applyAB');
+    const projectAB = document.getElementById('projectAB');
+
+    const qaAdd = document.getElementById('qaAdd');
+    const qaAge = document.getElementById('qaAge');
+    const qaType = document.getElementById('qaType');
+    const qaDayPart = document.getElementById('qaDayPart');
+    const qaDNAs = document.getElementById('qaDNAs');
+    const qaTransport = document.getElementById('qaTransport');
+    const qaConflict = document.getElementById('qaConflict');
+
+    const publicLink = document.getElementById('publicLink');
+    const copyLink = document.getElementById('copyLink');
+    const openForm = document.getElementById('openForm');
+    const seedBtn = document.getElementById('seedBtn');
+
+    // Outcomes UI
+    const outCountEl = document.getElementById('outCount');
+    const outAccEl = document.getElementById('outAcc');
+    const simulateOutcomesBtn = document.getElementById('simulateOutcomes');
+    const resetOutcomesBtn = document.getElementById('resetOutcomes');
+
+    // Charts
+    const riskCtx = document.getElementById('riskChart').getContext('2d');
+    const abCtx = document.getElementById('abChart').getContext('2d');
+    const calibCtx = document.getElementById('calibChart').getContext('2d');
+
+    const riskChart = new Chart(riskCtx, {
+      type: 'bar',
+      data: {
+        labels: ['0–19%', '20–39%', '40–59%', '60–79%', '80–100%'],
+        datasets: [{
+          label:'Count',
+          data:[0,0,0,0,0],
+          backgroundColor: ['#10b981','#84cc16','#f59e0b','#f97316','#ef4444'],
+          borderRadius: 8,
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{ legend:{display:false} },
+        scales:{
+          x:{ grid:{ display:false }},
+          y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'#eef2f7' } }
+        }
+      }
+    });
+
+    const abChart = new Chart(abCtx, {
+      type:'bar',
+      data:{
+        labels:['Variant A','Variant B'],
+        datasets:[{
+          label:'Projected attendance rate',
+          data:[0,0],
+          backgroundColor:['#60a5fa','#34d399'],
+          borderRadius:8
+        }]
+      },
+      options:{
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+          label:(ctx)=> (ctx.raw*100).toFixed(1)+'%'
+        } } },
+        scales:{
+          y:{ beginAtZero:true, max:1, grid:{ color:'#eef2f7' }, ticks:{ callback:(v)=> (v*100)+'%' } },
+          x:{ grid:{ display:false } }
+        }
+      }
+    });
+
+    const calibChart = new Chart(calibCtx, {
+      type: 'scatter',
+      data: {
+        datasets: [
+          { label: 'Observed vs Predicted', data: [], backgroundColor: '#2563eb' },
+          { type: 'line', label: 'Ideal', data: [{x:0,y:0},{x:1,y:1}],
+            borderColor: '#94a3b8', borderDash: [4,4], fill: false, pointRadius: 0 }
+        ]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { min: 0, max: 1, grid: { color:'#eef2f7' }, ticks: { callback: v => (v*100)+'%' }, title: { display: true, text: 'Predicted no‑show prob.' } },
+          y: { min: 0, max: 1, grid: { color:'#eef2f7' }, ticks: { callback: v => (v*100)+'%' }, title: { display: true, text: 'Observed no‑show rate' } }
+        }
+      }
+    });
+
+    // Broadcast channel for public submissions
+    const channel = ('BroadcastChannel' in window) ? new BroadcastChannel('dna-demo') : null;
+    if(channel){
+      channel.onmessage = (ev)=>{
+        if(ev.data?.type === 'submission'){
+          addItem(ev.data.payload);
+        }
+      };
+    }
+
+    // Init QR and link
+    const formUrl = location.origin + location.pathname + '?public=1';
+    publicLink.textContent = formUrl;
+    openForm.href = formUrl;
+    new QRCode(document.getElementById("qr"), { text: formUrl, width: 100, height: 100 });
+
+    copyLink.addEventListener('click', ()=>{
+      navigator.clipboard.writeText(formUrl);
+      copyLink.textContent = 'Copied!';
+      setTimeout(()=> copyLink.textContent='Copy link', 1200);
+    });
+
+    // Toggles
+    weatherGroup.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.toggle');
+      if(!btn) return;
+      weatherGroup.querySelectorAll('.toggle').forEach(b=> b.classList.remove('active'));
+      btn.classList.add('active');
+      state.ctx.weather = btn.dataset.weather; // sun | rain
+      recomputeAll();
+    });
+    transportGroup.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.toggle');
+      if(!btn) return;
+      transportGroup.querySelectorAll('.toggle').forEach(b=> b.classList.remove('active'));
+      btn.classList.add('active');
+      state.ctx.transport = btn.dataset.transport; // ok | disrupt
+      recomputeAll();
+    });
+
+    // Filter buttons
+    document.querySelectorAll('[data-filter]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('[data-filter]').forEach(b=> b.classList.remove('active'));
+        btn.classList.add('active');
+        renderStream(btn.dataset.filter);
+      });
+    });
+
+    // A/B controls
+    applyAB.addEventListener('click', ()=>{
+      syncABState();
+      assignVariants();
+      projectABNow();
+    });
+    projectAB.addEventListener('click', ()=>{
+      syncABState();
+      projectABNow();
+    });
+
+    function syncABState(){
+      state.ab.segment = abSegment.value;
+      state.ab.variants[0].name = varAName.value.trim() || 'Variant A';
+      state.ab.variants[0].effect = Math.max(0, (parseFloat(varAEffect.value)||0) / 100);
+      state.ab.variants[1].name = varBName.value.trim() || 'Variant B';
+      state.ab.variants[1].effect = Math.max(0, (parseFloat(varBEffect.value)||0) / 100);
+      abChart.data.labels = [state.ab.variants[0].name, state.ab.variants[1].name];
+      abChart.update();
+    }
+
+    // Simulate and reset
+    simulateBtn.addEventListener('click', ()=>{
+      if(state.simTimer){
+        clearInterval(state.simTimer);
+        state.simTimer = null;
+        simulateBtn.textContent = '▶️ Simulate Participants';
+        simulateBtn.classList.add('secondary');
+      } else {
+        state.simTimer = setInterval(()=> addItem(randomPayload()), 1400);
+        simulateBtn.textContent = '⏸️ Pause Simulation';
+        simulateBtn.classList.remove('secondary');
+      }
+    });
+    resetBtn.addEventListener('click', ()=>{
+      state.items = [];
+      clearInterval(state.simTimer); state.simTimer = null;
+      simulateBtn.textContent = '▶️ Simulate Participants';
+      simulateBtn.classList.add('secondary');
+      // Clear outcomes too
+      predictionLog.clear();
+      outcomes.length = 0;
+      updateOutcomeStats();
+      updateCalibration();
+      rerenderAll();
+    });
+    seedBtn.addEventListener('click', ()=>{
+      for(let i=0;i<20;i++) addItem(randomPayload());
+    });
+
+    // Outcomes controls
+    simulateOutcomesBtn.addEventListener('click', ()=>{
+      // Simulate up to 10 outcomes for items without outcome
+      const pending = state.items.filter(it => !it.outcome).slice(0, 10);
+      for(const it of pending){
+        const p = predictionLog.get(it.id) ?? it.risk/100;
+        const y = Math.random() < p ? 1 : 0; // 1=DNA
+        markOutcome(it.id, y === 0); // arrived if y==0
+      }
+    });
+    resetOutcomesBtn.addEventListener('click', ()=>{
+      outcomes.length = 0;
+      for(const it of state.items){ delete it.outcome; }
+      updateOutcomeStats();
+      updateCalibration();
+      renderStream(document.querySelector('.toggle.active[data-filter]')?.dataset.filter || 'all');
+    });
+
+    // Quick add
+    qaAdd.addEventListener('click', ()=>{
+      const payload = {
+        age_band: qaAge.value,
+        appointment_type: qaType.value,
+        day_part: qaDayPart.value,
+        prior_dnas: normalizeDNAs(qaDNAs.value),
+        transport_mode: qaTransport.value,
+        conflict: qaConflict.value === 'Yes'
+      };
+      addItem(payload);
+    });
+
+    // Start with a few seeds
+    for(let i=0;i<8;i++) addItem(randomPayload());
+
+    // Helpers
+    function addItem(payload){
+      const item = scoreItem(payload, state.ctx);
+      state.items.unshift(item);
+      predictionLog.set(item.id, item.risk / 100);
+
+      // Pulse participants KPI
+      kpiParticipantsDelta.textContent = '+1 now';
+      clearTimeout(state.participantsPulseTimeout);
+      state.participantsPulseTimeout = setTimeout(()=> kpiParticipantsDelta.textContent = '+0 now', 1500);
+
+      renderItemCard(item);
+      updateKPIs();
+      updateRiskChart();
+      projectABNow(); // keep projection current
+    }
+
+    function scoreItem(input, ctx){
+      // Risk scoring: simple, transparent logic for demo
+      let risk = 0.18; // baseline 18%
+      const reasons = [];
+      // Prior DNAs
+      if(input.prior_dnas === 1){ risk += 0.22; reasons.push('Prior DNA'); }
+      if(input.prior_dnas >= 2){ risk += 0.35; reasons.push('Multiple DNAs'); }
+      // Age
+      if(input.age_band === '18-24'){ risk += 0.06; reasons.push('Younger age'); }
+      if(input.age_band === '65+'){ risk += 0.03; reasons.push('Older age'); }
+      // Time of day
+      const dp = (input.day_part||'').toLowerCase();
+      if(dp === 'morning'){ risk += 0.04; reasons.push('Morning slot'); }
+      if(dp === 'evening'){ risk += 0.02; reasons.push('Evening slot'); }
+      // Conflict and transport
+      if(input.conflict){ risk += 0.08; reasons.push('Work/childcare conflict'); }
+      if((input.transport_mode||'').toLowerCase() === 'public'){ risk += 0.04; reasons.push('Public transport'); }
+      // Dynamic context
+      if(ctx.weather === 'rain'){ risk += 0.05; reasons.push('Rain forecast'); }
+      if(ctx.transport === 'disrupt'){ risk += 0.08; reasons.push('Transport disruption'); }
+      // Appointment nuances
+      if(input.appointment_type === 'Mental Health'){ risk += 0.03; reasons.push('MH appointment'); }
+
+      risk = Math.max(0, Math.min(risk, 0.95));
+      // Channel recommendation
+      let channel = 'SMS';
+      if(risk >= 0.5) channel = 'Voice Call';
+      else if(risk >= 0.3) channel = 'SMS (Evening)';
+      else channel = (input.age_band === '18-24') ? 'App Push' : 'SMS';
+
+      const id = 'P-' + String(Date.now()).slice(-6) + '-' + Math.floor(Math.random()*100);
+      return {
+        id,
+        createdAt: new Date(),
+        input,
+        risk: Math.round(risk*100),
+        channel,
+        variant: null,
+        rationale: reasons.slice(0,3).join(', ')
+      };
+    }
+
+    function recomputeAll(){
+      // Recompute risk for all items under new context
+      state.items = state.items.map(it=>{
+        const re = scoreItem(it.input, state.ctx);
+        // Keep original prediction for calibration by not updating predictionLog
+        return { ...it, risk: re.risk, channel: re.channel, rationale: re.rationale };
+      });
+      rerenderAll();
+    }
+
+    function rerenderAll(){
+      streamEl.innerHTML = '';
+      renderStream(document.querySelector('.toggle.active[data-filter]')?.dataset.filter || 'all');
+      updateKPIs();
+      updateRiskChart();
+      projectABNow();
+    }
+
+    function buildItemCard(item){
+      const row = document.createElement('div');
+      row.className = 'item';
+      row.dataset.id = item.id;
+
+      const sev = severity(item.risk);
+      const color = sev === 'low' ? '#10b981' : (sev==='med' ? '#f59e0b' : '#ef4444');
+
+      row.innerHTML = `
+        <div><div class="risk-dot" style="background:${color};margin-top:6px"></div></div>
+        <div style="flex:1">
+          <div class="row" style="justify-content:space-between">
+            <div class="row" style="gap:10px">
+              <div class="badge-sm">ID ${item.id}</div>
+              <div class="badge-sm" style="background:#f1f5f9;border-color:#e5e7eb">${item.risk}% risk</div>
+              <div class="badge-sm" style="background:#eef6ff;border-color:#d4e4ff;color:#07396e">${item.channel}</div>
+              ${item.variant ? `<div class="badge-sm" style="background:#ecfeff;border-color:#c7f9ff;color:#036c7e">Variant: ${item.variant}</div>` : ''}
+              ${item.outcome ? `<div class="badge-sm badge-outcome" style="background:#ecfeff;border-color:#c7f9ff;color:${item.outcome==='DNA'?'#b91c1c':'#036c7e'}">Outcome: ${item.outcome}</div>` : ''}
+            </div>
+            <div class="mini muted">${timeAgo(item.createdAt)}</div>
+          </div>
+          <div style="margin:6px 0 8px" class="muted">Why: ${item.rationale || '—'}</div>
+          <div class="chips">
+            <span class="chip">Age: ${item.input.age_band}</span>
+            <span class="chip">Time: ${item.input.day_part}</span>
+            <span class="chip">DNAs: ${item.input.prior_dnas}</span>
+            <span class="chip">Transport: ${item.input.transport_mode}</span>
+            <span class="chip">Type: ${item.input.appointment_type}</span>
+          </div>
+          <div class="actions" style="margin-top:8px">
+            <button class="btn ghost btn-outcome btn-arrived"${item.outcome?' disabled':''}>Mark Arrived</button>
+            <button class="btn ghost btn-outcome btn-dna"${item.outcome?' disabled':''}>Mark DNA</button>
+          </div>
+        </div>
+      `;
+      row.addEventListener('click', ()=> selectItem(item));
+      const btnArrived = row.querySelector('.btn-arrived');
+      const btnDNA = row.querySelector('.btn-dna');
+      btnArrived.addEventListener('click', (e)=>{ e.stopPropagation(); markOutcome(item.id, true); });
+      btnDNA.addEventListener('click', (e)=>{ e.stopPropagation(); markOutcome(item.id, false); });
+      return row;
+    }
+
+    function renderItemCard(item){
+      // Add newest at top
+      const row = buildItemCard(item);
+      streamEl.prepend(row);
+    }
+
+    function renderStream(filter='all'){
+      streamEl.innerHTML = '';
+      // Iterate oldest -> newest so prepend keeps newest on top
+      const list = state.items.slice().reverse();
+      for(const it of list){
+        if(filter !== 'all' && severity(it.risk) !== filter) continue;
+        renderItemCard(it);
+      }
+    }
+
+    function selectItem(item){
+      const inspector = document.getElementById('inspector');
+      const sev = severity(item.risk);
+      const color = sev === 'low' ? '#10b981' : (sev==='med' ? '#f59e0b' : '#ef4444');
+      inspector.innerHTML = `
+        <div class="panel">
+          <div class="row" style="align-items:center;justify-content:space-between">
+            <div class="row" style="gap:8px;align-items:center">
+              <div class="risk-dot" style="background:${color}"></div>
+              <div><span class="hl">ID ${item.id}</span></div>
+            </div>
+            <div class="mini">Submitted ${timeAgo(item.createdAt)}</div>
+          </div>
+          <div class="row" style="margin-top:8px;gap:12px">
+            <div class="badge-sm" style="background:#fbfefd;border-color:#e5f7ee;color:#03543f">${item.risk}% risk</div>
+            <div class="badge-sm" style="background:#eef6ff;border-color:#d4e4ff;color:#07396e">Recommended: ${item.channel}</div>
+            ${item.variant ? `<div class="badge-sm" style="background:#ecfeff;border-color:#c7f9ff;color:#036c7e">Variant: ${item.variant}</div>` : ''}
+            ${item.outcome ? `<div class="badge-sm" style="background:#ecfeff;border-color:#c7f9ff;color:${item.outcome==='DNA'?'#b91c1c':'#036c7e'}">Outcome: ${item.outcome}</div>` : ''}
+          </div>
+          <div class="divider"></div>
+          <div><span class="hl">Why</span>: ${item.rationale || '—'}</div>
+          <div class="small" style="margin-top:8px">Features: Age=${item.input.age_band}, Time=${item.input.day_part}, DNAs=${item.input.prior_dnas}, Transport=${item.input.transport_mode}, Type=${item.input.appointment_type}, Conflict=${item.input.conflict?'Yes':'No'}</div>
+        </div>
+      `;
+    }
+
+    function updateKPIs(){
+      const n = state.items.length;
+      kpiParticipants.textContent = n;
+
+      let avgRisk = 0;
+      let expectedNoShows = 0;
+      let variance = 0;
+      for(const it of state.items){
+        avgRisk += it.risk;
+        const p = it.risk/100;
+        expectedNoShows += p;
+        variance += p*(1-p);
+      }
+      avgRisk = n ? (avgRisk/n) : 0;
+      // Ring
+      avgRing.style.setProperty('--angle', (avgRisk*3.6)+'deg');
+      const ringColor = avgRisk>=50 ? 'var(--danger)' : avgRisk>=30 ? 'var(--warning)' : 'var(--success)';
+      avgRing.style.setProperty('--color', ringColor);
+      avgRingVal.textContent = Math.round(avgRisk)+'%';
+      kpiAvgRisk.textContent = Math.round(avgRisk)+'%';
+      kpiRiskLabel.textContent = avgRisk>=50 ? 'High' : avgRisk>=30 ? 'Medium' : 'Low';
+
+      // Expected no-shows
+      kpiNoShows.textContent = expectedNoShows.toFixed(1);
+
+      // Overbooking suggestion (round to nearest int up to +3)
+      const overbook = Math.min(3, Math.max(0, Math.round(expectedNoShows - 0.2)));
+      kpiOverbook.textContent = `+${overbook}`;
+      // Confidence heuristic
+      const std = Math.sqrt(variance);
+      const cv = expectedNoShows ? (std/expectedNoShows) : 0;
+      const conf = expectedNoShows<0.5 ? '—' : (cv<0.5 ? 'High' : cv<0.9 ? 'Medium' : 'Low');
+      kpiConfidence.textContent = `Confidence: ${conf}`;
+
+      // Delta vs sunny/no disruption baseline (quick heuristic)
+      const sunnyNoDisrupt = cloneCtxThenCalc({weather:'sun',transport:'ok'});
+      const delta = expectedNoShows - sunnyNoDisrupt.expectedNoShows;
+      const sign = delta>0 ? '+' : '';
+      kpiNoShowsDelta.textContent = `${sign}${delta.toFixed(1)} vs sunny`;
+
+      function cloneCtxThenCalc(ctx){
+        let s=0;
+        for(const it of state.items){
+          s += scoreItem(it.input, ctx).risk/100;
+        }
+        return { expectedNoShows: s };
+      }
+    }
+
+    function updateRiskChart(){
+      const bins = [0,0,0,0,0];
+      for(const it of state.items){
+        const r = it.risk;
+        const idx = r<20 ? 0 : r<40 ? 1 : r<60 ? 2 : r<80 ? 3 : 4;
+        bins[idx]++;
+      }
+      riskChart.data.datasets[0].data = bins;
+      riskChart.update();
+    }
+
+    function assignVariants(){
+      const seg = state.ab.segment;
+      for(const it of state.items){
+        if(inSegment(it.risk, seg)){
+          it.variant = Math.random()<0.5 ? state.ab.variants[0].name : state.ab.variants[1].name;
+        }
+      }
+      renderStream(document.querySelector('.toggle.active[data-filter]')?.dataset.filter || 'all');
+    }
+
+    function inSegment(risk, seg){
+      if(seg==='low') return risk < 20;
+      if(seg==='med') return risk >=20 && risk < 50;
+      if(seg==='high') return risk >= 50;
+      return true;
+    }
+
+    function projectABNow(){
+      const seg = state.ab.segment;
+      const A = state.ab.variants[0];
+      const B = state.ab.variants[1];
+      let aSum=0, aN=0, bSum=0, bN=0;
+      for(const it of state.items){
+        if(!inSegment(it.risk, seg)) continue;
+        const baseAttend = Math.max(0, 1 - it.risk/100);
+        const v = it.variant || (Math.random()<0.5 ? A.name : B.name);
+        if(v === A.name){ aSum += Math.min(1, baseAttend + A.effect); aN++; }
+        else { bSum += Math.min(1, baseAttend + B.effect); bN++; }
+      }
+      const aRate = aN ? aSum/aN : 0;
+      const bRate = bN ? bSum/bN : 0;
+      abChart.data.datasets[0].data = [aRate, bRate];
+      abChart.update();
+    }
+
+    function markOutcome(id, arrived){
+      const p = predictionLog.get(id) ?? 0.3;
+      const actualDNA = arrived ? 0 : 1;     // y=1 means DNA
+      const predictedDNA = p >= 0.5 ? 1 : 0; // simple threshold for demo
+
+      outcomes.push({ id, p, y: actualDNA, yhat: predictedDNA });
+
+      // Update item state for UI
+      const it = state.items.find(t => t.id === id);
+      if(it) it.outcome = arrived ? 'Arrived' : 'DNA';
+
+      // Rerender stream to reflect disabled buttons and badge
+      renderStream(document.querySelector('.toggle.active[data-filter]')?.dataset.filter || 'all');
+
+      // If the selected inspector item is this one, refresh inspector
+      const selId = document.querySelector('#inspector .hl')?.textContent?.replace('ID ','');
+      if(selId && selId === id) selectItem(it);
+
+      updateOutcomeStats();
+      updateCalibration();
+    }
+
+    function updateOutcomeStats(){
+      outCountEl.textContent = outcomes.length;
+      if(outcomes.length === 0){ outAccEl.textContent = '—'; return; }
+      let correct = 0;
+      for(const o of outcomes){ if(o.y === o.yhat) correct++; }
+      outAccEl.textContent = ((correct / outcomes.length) * 100).toFixed(0) + '%';
+    }
+
+    function updateCalibration(){
+      const bins = Array.from({length:10}, ()=>({n:0,sumP:0,sumY:0}));
+      for(const o of outcomes){
+        const idx = Math.min(9, Math.floor(o.p * 10));
+        bins[idx].n++; bins[idx].sumP += o.p; bins[idx].sumY += o.y;
+      }
+      const points = bins.filter(b=>b.n>0).map(b=>({ x: b.sumP/b.n, y: b.sumY/b.n }));
+      calibChart.data.datasets[0].data = points;
+      calibChart.update();
+    }
+
+    function severity(risk){
+      if(risk<20) return 'low';
+      if(risk<50) return 'med';
+      return 'high';
+    }
+
+    function timeAgo(date){
+      const s = Math.floor((Date.now()-new Date(date).getTime())/1000);
+      if(s<60) return s+'s ago';
+      const m = Math.floor(s/60);
+      if(m<60) return m+'m ago';
+      const h = Math.floor(m/60);
+      return h+'h ago';
+    }
+
+    function normalizeDNAs(v){
+      if(String(v).includes('+')) return 3;
+      return parseInt(v||'0',10);
+    }
+
+    function randomPayload(){
+      const ageBands = ['18-24','25-44','45-64','65+'];
+      const types = ['General','Physiotherapy','Cardiology','Mental Health'];
+      const dps = ['Morning','Afternoon','Evening'];
+      const transports = ['Public','Car','Walk'];
+      return {
+        age_band: pick(ageBands),
+        appointment_type: pick(types),
+        day_part: pick(dps),
+        prior_dnas: pick([0,0,0,1,1,2,3]),
+        transport_mode: pick(transports),
+        conflict: Math.random()<0.35
+      };
+      function pick(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+    }
+
+    // Initial AB names into inputs
+    varAName.value = state.ab.variants[0].name;
+    varBName.value = state.ab.variants[1].name;
+    varAEffect.value = Math.round(state.ab.variants[0].effect*100);
+    varBEffect.value = Math.round(state.ab.variants[1].effect*100);
+    projectABNow();
+  }
+})();
+</script>
+</body>
+</html>
