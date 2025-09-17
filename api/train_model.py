@@ -59,7 +59,7 @@ def main():
         logger.info("Testing a single prediction...")
         test_result = predictor.predict(
             sex=1,  # Female
-            date_of_appointment="2024-09-16",  # Monday
+            date_of_appointment="16/09/2024",  # Monday
             age=35  # 35 years old
         )
         

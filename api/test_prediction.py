@@ -23,11 +23,11 @@ def test_predictions():
         
         # Test cases
         test_cases = [
-            {"sex": 1, "date_of_appointment": "2024-09-15", "age": 40, "description": "Female, 40 years old, Sunday appointment"},
-            {"sex": 0, "date_of_appointment": "2024-09-16", "age": 35, "description": "Male, 35 years old, Monday appointment"},
-            {"sex": 1, "date_of_appointment": "2024-09-21", "age": 30, "description": "Female, 30 years old, Saturday appointment"},
-            {"sex": 0, "date_of_appointment": "2024-09-20", "age": 45, "description": "Male, 45 years old, Friday appointment"},
-            {"sex": 1, "date_of_appointment": "2024-09-18", "age": 25, "description": "Female, 25 years old, Wednesday appointment"}
+            {"sex": 1, "date_of_appointment": "15/09/2024", "age": 40, "description": "Female, 40 years old, Sunday appointment"},
+            {"sex": 0, "date_of_appointment": "16/09/2024", "age": 35, "description": "Male, 35 years old, Monday appointment"},
+            {"sex": 1, "date_of_appointment": "21/09/2024", "age": 30, "description": "Female, 30 years old, Saturday appointment"},
+            {"sex": 0, "date_of_appointment": "20/09/2024", "age": 45, "description": "Male, 45 years old, Friday appointment"},
+            {"sex": 1, "date_of_appointment": "18/09/2024", "age": 25, "description": "Female, 25 years old, Wednesday appointment"}
         ]
         
         print("\n" + "="*80)
