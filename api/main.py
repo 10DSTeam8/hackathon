@@ -16,7 +16,7 @@ predictor = AttendancePredictor()
 def predict():
     """
     POST endpoint that accepts JSON data and predicts patient attendance using TensorFlow model
-    Expected input: {"sex": 0|1, "date_of_appointment": "YYYY-MM-DD", "age": XX}
+    Expected input: {"sex": 0|1, "date_of_appointment": "dd/mm/yyyy", "age": XX}
     """
     try:
         # Get JSON data from request
@@ -48,14 +48,14 @@ def predict():
             return jsonify({"error": "sex must be 0 (male) or 1 (female)"}), 400
             
         if not isinstance(date_of_appointment, str):
-            return jsonify({"error": "date_of_appointment must be a string in YYYY-MM-DD format"}), 400
+            return jsonify({"error": "date_of_appointment must be a string in dd/mm/yyyy format"}), 400
             
         # Validate date format
         try:
             from datetime import datetime
-            datetime.strptime(date_of_appointment, '%Y-%m-%d')
+            datetime.strptime(date_of_appointment, '%d/%m/%Y')
         except ValueError:
-            return jsonify({"error": "date_of_appointment must be in YYYY-MM-DD format"}), 400
+            return jsonify({"error": "date_of_appointment must be in dd/mm/yyyy format"}), 400
             
         if not isinstance(age, int) or not (1 <= age <= 120):
             return jsonify({"error": "age must be a valid age between 1-120 years"}), 400
