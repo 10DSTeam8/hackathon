@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
-import boto3
 import json
 import logging
+from attendance_model import AttendancePredictor
 
 # Configure logging
 logger = logging.getLogger()
@@ -9,16 +9,17 @@ logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 
-# Initialize AWS Sagemaker client
-sagemaker_runtime = boto3.client('sagemaker-runtime')
+# Initialize the attendance predictor
+predictor = AttendancePredictor()
 
 @app.route("/predict", methods=["POST"])
 def predict():
     """
-    POST endpoint that accepts JSON data and makes a call to AWS Sagemaker model
+    POST endpoint that accepts JSON data and predicts patient attendance using TensorFlow model
+    Expected input: {"sex": 0|1, "date_of_appointment": "YYYY-MM-DD", "age": XX}
     """
     try:
-        # Get JSON data from request with force=False and silent=True to handle errors gracefully
+        # Get JSON data from request
         data = request.get_json(force=False, silent=True)
         
         if data is None:
@@ -27,39 +28,71 @@ def predict():
         # Log the incoming request
         logger.info(f"Received prediction request: {json.dumps(data)}")
         
-        # TODO: Replace with actual Sagemaker endpoint name
-        endpoint_name = "sagemaker-endpoint-name"
+        # Validate required fields
+        required_fields = ['sex', 'date_of_appointment', 'age']
+        missing_fields = [field for field in required_fields if field not in data]
         
-        # Prepare the payload for Sagemaker
-        payload = json.dumps(data)
+        if missing_fields:
+            return jsonify({
+                "error": f"Missing required fields: {missing_fields}",
+                "required_fields": required_fields
+            }), 400
         
-        # Make the call to Sagemaker
-        response = sagemaker_runtime.invoke_endpoint(
-            EndpointName=endpoint_name,
-            ContentType='application/json',
-            Body=payload
-        )
+        # Extract and validate input data
+        sex = data['sex']
+        date_of_appointment = data['date_of_appointment']
+        age = data['age']
         
-        # Parse the response
-        result = json.loads(response['Body'].read().decode())
+        # Validate data types and ranges
+        if not isinstance(sex, int) or sex not in [0, 1]:
+            return jsonify({"error": "sex must be 0 (male) or 1 (female)"}), 400
+            
+        if not isinstance(date_of_appointment, str):
+            return jsonify({"error": "date_of_appointment must be a string in YYYY-MM-DD format"}), 400
+            
+        # Validate date format
+        try:
+            from datetime import datetime
+            datetime.strptime(date_of_appointment, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({"error": "date_of_appointment must be in YYYY-MM-DD format"}), 400
+            
+        if not isinstance(age, int) or not (1 <= age <= 120):
+            return jsonify({"error": "age must be a valid age between 1-120 years"}), 400
         
-        logger.info(f"Sagemaker response: {json.dumps(result)}")
-
-        # Extract the prediction value and apply multipliers
-        prediction = result['prediction']
+        # Make prediction using TensorFlow model
+        result = predictor.predict(sex, date_of_appointment, age)
+        
+        logger.info(f"Model prediction: {json.dumps(result)}")
+        
+        # Apply optional multipliers if provided (maintaining compatibility)
+        base_prediction = result['will_attend_probability']
         
         if 'bad_weather' in data and data['bad_weather']:
-            prediction = prediction * 0.955
+            base_prediction = base_prediction * 0.955
 
         if 'transport_issues' in data and data['transport_issues']:
-            prediction = prediction * 0.85
+            base_prediction = base_prediction * 0.85
 
         if 'patient_engaged' in data and data['patient_engaged']:
-            prediction = prediction * 1.11
+            base_prediction = base_prediction * 1.11
+        
+        # Ensure probability stays within [0, 1] range
+        final_prediction = max(0.0, min(1.0, base_prediction))
         
         return jsonify({
             "status": "success",
-            "prediction": prediction
+            "prediction": final_prediction,
+            "will_attend_probability": final_prediction,
+            "predicted_attendance": int(final_prediction >= 0.5),
+            "confidence": float(max(final_prediction, 1 - final_prediction)),
+            "model_details": {
+                "input": {
+                    "sex": sex,
+                    "date_of_appointment": date_of_appointment,
+                    "age": age
+                }
+            }
         }), 200
         
     except Exception as e:
