@@ -6,6 +6,11 @@ name = "pypi"
 [packages]
 flask = "*"
 boto3 = "*"
+tensorflow = "*"
+pandas = "*"
+numpy = "*"
+scikit-learn = "*"
+joblib = "*"
 
 [dev-packages]
 

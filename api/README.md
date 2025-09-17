@@ -69,7 +69,7 @@ pipenv install
 ```bash
 pipenv run python main.py
 ```
-The app will run on `http://127.0.0.1:5000`
+The app will run on `http://127.0.0.1:4150`
 
 ### AWS Lambda Deployment
 The `lambda_handler` function is ready for AWS Lambda deployment. The handler processes API Gateway events and returns proper responses.
