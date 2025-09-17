@@ -1,6 +1,6 @@
 # Test the Flask Lambda API with Sagemaker integration
 
-POST http://127.0.0.1:5000/predict
+POST http://127.0.0.1:4150/predict
 Content-Type: application/json
 
 {
@@ -15,7 +15,7 @@ Content-Type: application/json
 ###
 
 # Test with different data structure
-POST http://127.0.0.1:5000/predict
+POST http://127.0.0.1:4150/predict
 Content-Type: application/json
 
 {
@@ -30,7 +30,7 @@ Content-Type: application/json
 ###
 
 # Test error handling with empty body
-POST http://127.0.0.1:5000/predict
+POST http://127.0.0.1:4150/predict
 Content-Type: application/json
 
 ###
