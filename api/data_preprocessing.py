@@ -38,13 +38,13 @@ class AttendanceDataProcessor:
         """
         Apply feature engineering transformations
         - sex: 0=male, 1=female (already encoded)
-        - date_of_appointment: date in YYYY-MM-DD format
+        - date_of_appointment: date in dd/mm/yyyy format
         - age: patient age in years (already provided)
         """
         df_processed = df.copy()
         
-        # Parse dates and create date-based features
-        df_processed['date_of_appointment'] = pd.to_datetime(df_processed['date_of_appointment'])
+        # Parse dates and create date-based features (expecting dd/mm/yyyy format)
+        df_processed['date_of_appointment'] = pd.to_datetime(df_processed['date_of_appointment'], format='%d/%m/%Y')
         
         # Extract date components
         df_processed['day_of_week'] = df_processed['date_of_appointment'].dt.dayofweek  # 0=Monday, 6=Sunday
