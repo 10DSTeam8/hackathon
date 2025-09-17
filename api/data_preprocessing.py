@@ -37,11 +37,14 @@ class AttendanceDataProcessor:
     def feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Apply feature engineering transformations
-        - sex: 0=male, 1=female (already encoded)
+        - sex: 0=male, 1=female (encoded from original values)
         - date_of_appointment: date in dd/mm/yyyy format
         - age: patient age in years (already provided)
         """
         df_processed = df.copy()
+        
+        # Handle sex encoding - map 3 to 0 (male), keep 1 as 1 (female)
+        df_processed['sex'] = df_processed['sex'].map({1: 1, 3: 0})
         
         # Parse dates and create date-based features (expecting dd/mm/yyyy format)
         df_processed['date_of_appointment'] = pd.to_datetime(df_processed['date_of_appointment'], format='%d/%m/%Y')
@@ -56,9 +59,12 @@ class AttendanceDataProcessor:
         df_processed['is_monday'] = (df_processed['day_of_week'] == 0).astype(int)
         df_processed['is_friday'] = (df_processed['day_of_week'] == 4).astype(int)
         
-        # Validate data ranges
+        # Validate data ranges after encoding
+        if df_processed['sex'].isnull().any():
+            raise ValueError("Sex values contain invalid entries - must be 1 (female) or 3 (male)")
+            
         if (df_processed['sex'] < 0).any() or (df_processed['sex'] > 1).any():
-            raise ValueError("Sex values must be 0 (male) or 1 (female)")
+            raise ValueError("Sex values must be 0 (male) or 1 (female) after encoding")
             
         if (df_processed['age'] < 0).any() or (df_processed['age'] > 150).any():
             raise ValueError("Calculated age is out of reasonable range")
@@ -93,13 +99,17 @@ class AttendanceDataProcessor:
     def prepare_single_prediction(self, sex: int, date_of_appointment: str, age: int) -> np.ndarray:
         """
         Prepare a single record for prediction
+        Accepts standard API format: sex (0=male, 1=female)
         """
         if not self.is_fitted:
             raise ValueError("Processor must be fitted on training data first")
         
-        # Create a DataFrame with single record
+        # Convert API format (0=male, 1=female) to training data format (3=male, 1=female)
+        training_sex = 1 if sex == 1 else 3
+        
+        # Create a DataFrame with single record using training data format
         data = {
-            'sex': [sex],
+            'sex': [training_sex],
             'date_of_appointment': [date_of_appointment],
             'age': [age],
             'attended_or_did_not_attend': [0]  # Dummy value, not used for prediction
